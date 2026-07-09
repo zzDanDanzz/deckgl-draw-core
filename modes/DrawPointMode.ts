@@ -2,6 +2,7 @@ import { createPoint } from '../utils/geometryUtils.js';
 import type { FeatureCollection, Position } from 'geojson';
 import type { PickingInfo } from '@deck.gl/core';
 import type { ModeHandler, ActionContext } from '../types.js';
+import { produce } from 'immer';
 
 export class DrawPointMode implements ModeHandler {
   onClick(info: PickingInfo, context: ActionContext): boolean {
@@ -10,10 +11,9 @@ export class DrawPointMode implements ModeHandler {
 
     const { data, onChange } = context.props;
     const newPoint = createPoint(coordinate as Position);
-    const updatedData: FeatureCollection = {
-      ...data,
-      features: [...data.features, newPoint]
-    };
+    const updatedData = produce(data, (draft) => {
+      draft.features.push(newPoint);
+    });
     if (onChange) {
       onChange(updatedData, { type: 'create', features: [newPoint] });
     }

@@ -2,6 +2,7 @@ import { createLineString } from '../utils/geometryUtils.js';
 import type { Feature, LineString, Position, FeatureCollection } from 'geojson';
 import type { PickingInfo } from '@deck.gl/core';
 import type { ModeHandler, ActionContext } from '../types.js';
+import { produce } from 'immer';
 
 export class DrawLineMode implements ModeHandler {
   handleModeChange(oldMode: string | undefined, context: ActionContext): void {
@@ -12,10 +13,9 @@ export class DrawLineMode implements ModeHandler {
       if (draftFeature) {
         const coords = (draftFeature.geometry as LineString).coordinates;
         if (coords.length >= 2) {
-          const updatedData: FeatureCollection = {
-            ...data,
-            features: [...data.features, draftFeature]
-          };
+          const updatedData = produce(data, (draft) => {
+            draft.features.push(draftFeature);
+          });
           if (onChange) {
             onChange(updatedData, { type: 'create', features: [draftFeature] });
           }

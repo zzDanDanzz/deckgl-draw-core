@@ -2,6 +2,7 @@ import { translateGeometry } from '../utils/geometryUtils.js';
 import type { Feature, FeatureCollection, Position } from 'geojson';
 import type { PickingInfo } from '@deck.gl/core';
 import type { ModeHandler, ActionContext } from '../types.js';
+import { produce } from 'immer';
 
 export class SelectFeatureMode implements ModeHandler {
   onClick(info: PickingInfo, context: ActionContext): boolean {
@@ -39,8 +40,8 @@ export class SelectFeatureMode implements ModeHandler {
         context.mutateState({
           draggedFeatureId: featureId,
           dragStartCoordinate: coordinate as Position,
-          originalFeatureGeometry: JSON.parse(JSON.stringify(clickedFeature.geometry)),
-          draftFeature: JSON.parse(JSON.stringify(clickedFeature))
+          originalFeatureGeometry: clickedFeature.geometry,
+          draftFeature: clickedFeature
         });
         return true;
       }
@@ -57,13 +58,11 @@ export class SelectFeatureMode implements ModeHandler {
     const deltaLng = coordinate[0]! - dragStartCoordinate[0]!;
     const deltaLat = coordinate[1]! - dragStartCoordinate[1]!;
 
-    const updatedGeometry = translateGeometry(originalFeatureGeometry, deltaLng, deltaLat);
-    context.mutateState({
-      draftFeature: {
-        ...draftFeature,
-        geometry: updatedGeometry
-      }
+    const nextDraft = produce(draftFeature, (d) => {
+      d.geometry = translateGeometry(originalFeatureGeometry, deltaLng, deltaLat);
     });
+
+    context.mutateState({ draftFeature: nextDraft });
     return true;
   }
 
@@ -78,13 +77,9 @@ export class SelectFeatureMode implements ModeHandler {
       });
 
       if (featureIdx !== -1) {
-        const updatedFeatures = [...data.features];
-        updatedFeatures[featureIdx] = draftFeature;
-
-        const updatedData: FeatureCollection = {
-          ...data,
-          features: updatedFeatures
-        };
+        const updatedData = produce(data, (d) => {
+          d.features[featureIdx] = draftFeature;
+        });
 
         if (onChange) {
           onChange(updatedData, { type: 'update', features: [draftFeature] });

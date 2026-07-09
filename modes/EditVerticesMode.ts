@@ -1,6 +1,7 @@
 import type { Feature, FeatureCollection, Position } from 'geojson';
 import type { PickingInfo } from '@deck.gl/core';
 import type { ModeHandler, ActionContext } from '../types.js';
+import { produce } from 'immer';
 
 export class EditVerticesMode implements ModeHandler {
   onClick(info: PickingInfo, context: ActionContext): boolean {
@@ -47,8 +48,8 @@ export class EditVerticesMode implements ModeHandler {
         context.mutateState({
           draggedVertex: { featureId: handle.featureId, vertexIndex: handle.vertexIndex },
           dragStartCoordinate: coordinate as Position,
-          originalFeatureGeometry: JSON.parse(JSON.stringify(feature.geometry)),
-          draftFeature: JSON.parse(JSON.stringify(feature))
+          originalFeatureGeometry: feature.geometry,
+          draftFeature: feature
         });
         return true;
       }
@@ -64,47 +65,38 @@ export class EditVerticesMode implements ModeHandler {
 
     const deltaLng = coordinate[0]! - dragStartCoordinate[0]!;
     const deltaLat = coordinate[1]! - dragStartCoordinate[1]!;
-
-    const updatedGeometry = JSON.parse(JSON.stringify(originalFeatureGeometry));
     const vertexIndex = draggedVertex.vertexIndex;
 
-    if (updatedGeometry.type === 'Point') {
-      updatedGeometry.coordinates = [
-        originalFeatureGeometry.coordinates[0]! + deltaLng,
-        originalFeatureGeometry.coordinates[1]! + deltaLat
-      ];
-    } else if (updatedGeometry.type === 'LineString') {
-      const origCoords = originalFeatureGeometry.coordinates;
-      updatedGeometry.coordinates = origCoords.map((coord: Position, idx: number) => {
-        if (idx === vertexIndex) {
-          return [coord[0]! + deltaLng, coord[1]! + deltaLat];
-        }
-        return coord;
-      });
-    } else if (updatedGeometry.type === 'Polygon') {
-      const ring = updatedGeometry.coordinates[0];
-      if (ring) {
-        const origRing = originalFeatureGeometry.coordinates[0];
-        updatedGeometry.coordinates[0] = origRing.map((coord: Position, idx: number) => {
-          if (idx === vertexIndex) {
-            return [coord[0]! + deltaLng, coord[1]! + deltaLat];
+    const nextDraft = produce(draftFeature, (draft) => {
+      const geom = draft.geometry;
+      const origGeom = originalFeatureGeometry;
+
+      if (geom.type === 'Point' && origGeom.type === 'Point') {
+        geom.coordinates[0] = origGeom.coordinates[0]! + deltaLng;
+        geom.coordinates[1] = origGeom.coordinates[1]! + deltaLat;
+      } else if (geom.type === 'LineString' && origGeom.type === 'LineString') {
+        geom.coordinates[vertexIndex] = [
+          origGeom.coordinates[vertexIndex]![0]! + deltaLng,
+          origGeom.coordinates[vertexIndex]![1]! + deltaLat
+        ];
+      } else if (geom.type === 'Polygon' && origGeom.type === 'Polygon') {
+        const ring = geom.coordinates[0];
+        const origRing = origGeom.coordinates[0];
+        if (ring && origRing && origRing[vertexIndex]) {
+          ring[vertexIndex] = [
+            origRing[vertexIndex]![0]! + deltaLng,
+            origRing[vertexIndex]![1]! + deltaLat
+          ];
+
+          if (vertexIndex === 0 && ring.length > 0) {
+            const len = ring.length;
+            ring[len - 1] = [...ring[0]!];
           }
-          return coord;
-        });
-
-        if (vertexIndex === 0 && updatedGeometry.coordinates[0].length > 0) {
-          const len = updatedGeometry.coordinates[0].length;
-          updatedGeometry.coordinates[0][len - 1] = updatedGeometry.coordinates[0][0];
         }
-      }
-    }
-
-    context.mutateState({
-      draftFeature: {
-        ...draftFeature,
-        geometry: updatedGeometry
       }
     });
+
+    context.mutateState({ draftFeature: nextDraft });
     return true;
   }
 
@@ -121,13 +113,9 @@ export class EditVerticesMode implements ModeHandler {
       });
 
       if (featureIdx !== -1) {
-        const updatedFeatures = [...data.features];
-        updatedFeatures[featureIdx] = draftFeature;
-
-        const updatedData: FeatureCollection = {
-          ...data,
-          features: updatedFeatures
-        };
+        const updatedData = produce(data, (draft) => {
+          draft.features[featureIdx] = draftFeature;
+        });
 
         if (onChange) {
           onChange(updatedData, { type: 'update', features: [draftFeature] });
