@@ -1,40 +1,71 @@
-import type { CompositeLayerProps, DefaultProps, Layer, PickingInfo, UpdateParameters } from '@deck.gl/core';
+import { getLastVertex, getVertexHandles } from './utils/geometryUtils.js';
+import type { DefaultProps, Layer, PickingInfo, UpdateParameters } from '@deck.gl/core';
 import { CompositeLayer } from '@deck.gl/core';
-import { LineLayer, PathLayer, ScatterplotLayer, SolidPolygonLayer } from '@deck.gl/layers';
-import type { Feature, LineString, MultiPoint, Polygon, Position } from 'geojson';
-import { createLineString, createMultiPoint, createPolygon } from './utils/geojson.js';
+import { GeoJsonLayer, LineLayer, ScatterplotLayer, SolidPolygonLayer } from '@deck.gl/layers';
+import type { FeatureCollection, Feature, Position } from 'geojson';
+import type { EditMode, EditableLayerProps, VertexHandle, ModeHandler, ActionContext } from './types.js';
+
+import { DrawPointMode } from './modes/DrawPointMode.js';
+import { DrawLineMode } from './modes/DrawLineMode.js';
+import { DrawPolygonMode } from './modes/DrawPolygonMode.js';
+import { SelectFeatureMode } from './modes/SelectFeatureMode.js';
+import { EditVerticesMode } from './modes/EditVerticesMode.js';
 
 const BACKGROUND_POLYGON: Position[][] = [[
   [-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]
 ]];
 
-export type EditableLayerMode = 'inactive' | 'point' | 'line' | 'polygon';
-
-export type DrawnFeature = Feature<MultiPoint | LineString | Polygon>;
-
-export interface EditableLayerProps extends CompositeLayerProps {
-  mode?: EditableLayerMode;
-  onDrawComplete?: (feature: DrawnFeature) => void;
-}
-
 const defaultProps: DefaultProps<EditableLayerProps> = {
   mode: 'inactive',
+  selectedFeatureIds: [],
+  selectedVertexIndices: [],
+  data: { type: 'FeatureCollection', features: [] }
 };
 
+const MODE_HANDLERS: Record<string, ModeHandler> = {
+  draw_point: new DrawPointMode(),
+  draw_line: new DrawLineMode(),
+  draw_polygon: new DrawPolygonMode(),
+  select_feature: new SelectFeatureMode(),
+  edit_vertices: new EditVerticesMode(),
+};
 
 export class EditableLayer extends CompositeLayer<EditableLayerProps> {
   static layerName = 'EditableLayer';
   static defaultProps = defaultProps;
 
   declare state: {
-    activeVertices: Position[];
-    hoverCoordinate: Position | null;
+    draftFeature: Feature | null; // The shape currently being drawn or modified
+    hoverCoordinate: Position | null; // For rendering the preview guide line
+
+    // Dragging state
+    draggedVertex: { featureId: string | number | null; vertexIndex: number } | null;
+    draggedFeatureId: string | number | null;
+    dragStartCoordinate: Position | null;
+    originalFeatureGeometry: any;
   };
 
   initializeState() {
     this.state = {
-      activeVertices: [],
-      hoverCoordinate: null
+      draftFeature: null,
+      hoverCoordinate: null,
+      draggedVertex: null,
+      draggedFeatureId: null,
+      dragStartCoordinate: null,
+      originalFeatureGeometry: null
+    };
+  }
+
+  private get activeHandler(): ModeHandler | null {
+    const { mode } = this.props;
+    return mode && mode !== 'inactive' ? MODE_HANDLERS[mode] ?? null : null;
+  }
+
+  private get actionContext(): ActionContext {
+    return {
+      props: this.props,
+      state: this.state,
+      mutateState: (newState) => this.setState(newState)
     };
   }
 
@@ -43,60 +74,95 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
     const { props, oldProps } = params;
 
     if (props.mode !== oldProps.mode) {
-      this._flushMemory(oldProps.mode || 'inactive');
+      // Clean up / finalize the old mode handler if it exists
+      const oldHandler = oldProps.mode && oldProps.mode !== 'inactive' ? MODE_HANDLERS[oldProps.mode] : null;
+      oldHandler?.handleModeChange?.(oldProps.mode, this.actionContext);
+
+      // Initialize the new mode handler if it exists
+      this.activeHandler?.handleModeChange?.(oldProps.mode, this.actionContext);
+
+      // Clean up base state on mode switch
+      this.setState({
+        draftFeature: null,
+        hoverCoordinate: null,
+        draggedVertex: null,
+        draggedFeatureId: null,
+        dragStartCoordinate: null,
+        originalFeatureGeometry: null
+      });
     }
-  }
-
-  _flushMemory(previousMode: EditableLayerMode) {
-    const { activeVertices } = this.state;
-
-    if (activeVertices.length > 0 && this.props.onDrawComplete) {
-      let feature: DrawnFeature | null = null;
-
-      if (previousMode === 'polygon' && activeVertices.length >= 3) {
-        const closedRing = [...activeVertices, activeVertices[0]!];
-        feature = createPolygon([closedRing]);
-      }
-      else if (previousMode === 'line' && activeVertices.length >= 2) {
-        feature = createLineString(activeVertices);
-      }
-      else if (previousMode === 'point') {
-        feature = createMultiPoint(activeVertices);
-      }
-
-      if (feature) {
-        this.props.onDrawComplete(feature);
-      }
-    }
-
-    this.setState({ activeVertices: [], hoverCoordinate: null });
   }
 
   onClick(info: PickingInfo) {
-    if (this.props.mode === 'inactive') return false;
-
-    const { coordinate } = info;
-    if (!coordinate) return false;
-
-    const { activeVertices } = this.state;
-
-    this.setState({
-      activeVertices: [...activeVertices, coordinate as Position]
-    });
-
-    return true;
+    return this.activeHandler?.onClick?.(info, this.actionContext) ?? false;
   }
 
   onHover(info: PickingInfo) {
-    if (this.props.mode === 'line' || this.props.mode === 'polygon') {
-      this.setState({ hoverCoordinate: (info.coordinate as Position) || null });
-      return true;
-    }
-    return false;
+    return this.activeHandler?.onHover?.(info, this.actionContext) ?? false;
+  }
+
+  onDragStart(info: PickingInfo, event: any) {
+    return this.activeHandler?.onDragStart?.(info, event, this.actionContext) ?? false;
+  }
+
+  onDrag(info: PickingInfo, event: any) {
+    return this.activeHandler?.onDrag?.(info, event, this.actionContext) ?? false;
+  }
+
+  onDragEnd(info: PickingInfo, event: any) {
+    return this.activeHandler?.onDragEnd?.(info, event, this.actionContext) ?? false;
+  }
+
+  private _renderBaseLayer(): Layer {
+    const { mode, data, selectedFeatureIds } = this.props;
+    const { draftFeature } = this.state;
+
+    const draftId = draftFeature?.id ?? draftFeature?.properties?.id;
+    const baseFeatures = draftId !== undefined
+      ? data.features.filter(f => (f.id ?? f.properties?.id) !== draftId)
+      : data.features;
+
+    const baseData: FeatureCollection = {
+      ...data,
+      features: baseFeatures
+    };
+
+    const isPickable = mode === 'select_feature' || mode === 'edit_vertices';
+    const selectedIds = selectedFeatureIds as (string | number)[] | undefined;
+
+    return new GeoJsonLayer(
+      this.getSubLayerProps({
+        id: 'base-geojson',
+        data: baseData,
+        pickable: isPickable,
+        getFillColor: (f: Feature) => {
+          const id = f.id ?? f.properties?.id;
+          const isSelected = id !== undefined && selectedIds?.includes(id);
+          return isSelected ? [255, 120, 0, 40] : [0, 100, 255, 40];
+        },
+        getLineColor: (f: Feature) => {
+          const id = f.id ?? f.properties?.id;
+          const isSelected = id !== undefined && selectedIds?.includes(id);
+          return isSelected ? [255, 120, 0, 200] : [0, 100, 255, 200];
+        },
+        getPointRadius: 6,
+        getPointSize: 6,
+        getLineWidth: 3,
+        lineWidthUnits: 'pixels',
+        pointRadiusUnits: 'pixels',
+        updateTriggers: {
+          getFillColor: [selectedFeatureIds],
+          getLineColor: [selectedFeatureIds]
+        }
+      })
+    );
   }
 
   private _renderPickingOverlay(): Layer | null {
-    if (this.props.mode === 'inactive') return null;
+    const { mode } = this.props;
+    if (mode !== 'draw_point' && mode !== 'draw_line' && mode !== 'draw_polygon') {
+      return null;
+    }
 
     return new SolidPolygonLayer<Position[]>(
       this.getSubLayerProps({
@@ -109,101 +175,45 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
     );
   }
 
-  private _renderPolygonFillOutline(): Layer[] {
-    const { mode } = this.props;
-    const { activeVertices, hoverCoordinate } = this.state;
+  private _renderDraftLayer(): Layer | null {
+    const { draftFeature } = this.state;
+    if (!draftFeature) return null;
 
-    if (mode !== 'polygon' || activeVertices.length === 0) return [];
-
-    const previewVertices = hoverCoordinate
-      ? [...activeVertices, hoverCoordinate]
-      : activeVertices;
-
-    const layers: Layer[] = [];
-
-    if (previewVertices.length >= 3) {
-      layers.push(
-        new SolidPolygonLayer<Position[]>(
-          this.getSubLayerProps({
-            id: 'polygon-fill',
-            data: [previewVertices],
-            getPolygon: (d: Position[]) => d,
-            getFillColor: [255, 0, 0, 80],
-            pickable: false
-          })
-        )
-      );
-    }
-
-    if (previewVertices.length >= 2) {
-      layers.push(
-        new PathLayer<Position[]>(
-          this.getSubLayerProps({
-            id: 'polygon-outline',
-            data: [[...previewVertices, previewVertices[0]!]],
-            getPath: (d: Position[]) => d,
-            getColor: [255, 0, 0, 255],
-            getWidth: 3,
-            widthMinPixels: 2,
-            pickable: false
-          })
-        )
-      );
-    }
-
-    return layers;
-  }
-
-  private _renderPoints(): Layer | null {
-    const { activeVertices } = this.state;
-    if (activeVertices.length === 0) return null;
-
-    return new ScatterplotLayer<Position>(
+    return new GeoJsonLayer(
       this.getSubLayerProps({
-        id: 'drawing-points',
-        data: activeVertices,
-        getPosition: (d: Position) => d,
-        getRadius: 6,
-        radiusUnits: 'pixels',
-        getFillColor: [255, 0, 0],
-        pickable: false
+        id: 'draft-geojson',
+        data: {
+          type: 'FeatureCollection',
+          features: [draftFeature]
+        },
+        pickable: false,
+        getFillColor: [255, 0, 0, 40],
+        getLineColor: [255, 0, 0, 255],
+        getPointRadius: 6,
+        getLineWidth: 3,
+        lineWidthUnits: 'pixels',
+        pointRadiusUnits: 'pixels'
       })
     );
   }
 
-  private _renderLines(): Layer | null {
+  private _renderGuideLine(): Layer | null {
     const { mode } = this.props;
-    const { activeVertices } = this.state;
+    const { draftFeature, hoverCoordinate } = this.state;
 
-    if (mode !== 'line' || activeVertices.length <= 1) return null;
+    if ((mode !== 'draw_line' && mode !== 'draw_polygon') || !draftFeature || !hoverCoordinate) {
+      return null;
+    }
 
-    return new PathLayer<Position[]>(
+    const lastVertex = getLastVertex(draftFeature);
+    if (!lastVertex) return null;
+
+    return new LineLayer(
       this.getSubLayerProps({
-        id: 'drawing-committed-lines',
-        data: [activeVertices],
-        getPath: (d: Position[]) => d,
-        getColor: [255, 0, 0, 255],
-        getWidth: 3,
-        widthMinPixels: 2,
-        pickable: false
-      })
-    );
-  }
-
-  private _renderPreviewLine(): Layer | null {
-    const { mode } = this.props;
-    const { activeVertices, hoverCoordinate } = this.state;
-
-    if (mode !== 'line' || activeVertices.length === 0 || !hoverCoordinate) return null;
-
-    const lastVertex = activeVertices[activeVertices.length - 1]!;
-
-    return new LineLayer<{ sourcePosition: Position, targetPosition: Position }>(
-      this.getSubLayerProps({
-        id: 'drawing-guide-line',
-        data: [{ sourcePosition: lastVertex, targetPosition: hoverCoordinate }],
-        getSourcePosition: (d: { sourcePosition: Position }) => d.sourcePosition,
-        getTargetPosition: (d: { targetPosition: Position }) => d.targetPosition,
+        id: 'guide-line',
+        data: [{ source: lastVertex, target: hoverCoordinate }],
+        getSourcePosition: (d: any) => d.source,
+        getTargetPosition: (d: any) => d.target,
         getColor: [255, 0, 0, 180],
         getWidth: 3,
         widthMinPixels: 2,
@@ -212,15 +222,68 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
     );
   }
 
+  private _renderVertexHandles(): Layer | null {
+    const { mode, data, selectedFeatureIds, selectedVertexIndices } = this.props;
+    const { draftFeature } = this.state;
+
+    const handles: VertexHandle[] = [];
+
+    if (mode === 'draw_line' || mode === 'draw_polygon') {
+      if (draftFeature) {
+        handles.push(...getVertexHandles(draftFeature, true));
+      }
+    } else if (mode === 'edit_vertices') {
+      if (draftFeature) {
+        handles.push(...getVertexHandles(draftFeature, false));
+      } else if (selectedFeatureIds && selectedFeatureIds.length > 0) {
+        const selectedIds = selectedFeatureIds as (string | number)[] | undefined;
+        for (const feature of data.features) {
+          const fid = feature.id ?? feature.properties?.id;
+          if (fid !== undefined && selectedIds?.includes(fid)) {
+            handles.push(...getVertexHandles(feature, false));
+          }
+        }
+      }
+    }
+
+    if (handles.length === 0) return null;
+
+    return new ScatterplotLayer<VertexHandle>(
+      this.getSubLayerProps({
+        id: 'vertex-handles',
+        data: handles,
+        getPosition: (d: VertexHandle) => d.position,
+        getRadius: 6,
+        radiusUnits: 'pixels',
+        getFillColor: (d: VertexHandle) => {
+          const isSelected = !d.isDraft && selectedVertexIndices?.includes(d.vertexIndex);
+          return isSelected ? [255, 120, 0] : [255, 255, 255];
+        },
+        getLineColor: [255, 0, 0],
+        stroked: true,
+        getLineWidth: 2,
+        lineWidthUnits: 'pixels',
+        pickable: true,
+        updateTriggers: {
+          getFillColor: [selectedVertexIndices],
+          getPosition: [handles]
+        }
+      })
+    );
+  }
+
   renderLayers(): Layer[] {
-    if (this.props.mode === 'inactive') return [];
+    const { mode } = this.props;
+    if (!mode || mode === 'inactive') {
+      return [this._renderBaseLayer()];
+    }
 
     return [
+      this._renderBaseLayer(),
       this._renderPickingOverlay(),
-      ...this._renderPolygonFillOutline(),
-      this._renderPoints(),
-      this._renderLines(),
-      this._renderPreviewLine()
+      this._renderDraftLayer(),
+      this._renderGuideLine(),
+      this._renderVertexHandles()
     ].filter(Boolean) as Layer[];
   }
 }
