@@ -47,6 +47,7 @@ export class EditVerticesMode implements ModeHandler {
       if (feature) {
         context.mutateState({
           draggedVertex: { featureId: handle.featureId, vertexIndex: handle.vertexIndex },
+          draggedFeatureId: handle.featureId,
           dragStartCoordinate: coordinate as Position,
           originalFeatureGeometry: feature.geometry,
           draftFeature: feature

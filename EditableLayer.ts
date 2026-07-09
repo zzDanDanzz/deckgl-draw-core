@@ -2,8 +2,9 @@ import type { DefaultProps, Layer, PickingInfo, UpdateParameters } from '@deck.g
 import { CompositeLayer } from '@deck.gl/core';
 import { GeoJsonLayer, LineLayer, ScatterplotLayer, SolidPolygonLayer } from '@deck.gl/layers';
 import type { Feature, FeatureCollection, Position, Geometry } from 'geojson';
-import type { ActionContext, EditableLayerProps, ModeHandler, VertexHandle } from './types.js';
+import type { ActionContext, EditableLayerProps, ModeHandler, VertexHandle, SnapOptions } from './types.js';
 import { getLastVertex, getVertexHandles } from './utils/geometryUtils.js';
+import { getSnappedCoordinate } from './utils/snapUtils.js';
 
 import { DrawLineMode } from './modes/DrawLineMode.js';
 import { DrawPointMode } from './modes/DrawPointMode.js';
@@ -21,7 +22,8 @@ const defaultProps: DefaultProps<EditableLayerProps> = {
   selectedFeatureIds: [],
   selectedVertexIndices: [],
   data: { type: 'FeatureCollection', features: [] },
-  style: {}
+  style: {},
+  snapOptions: { enabled: true, snapToVertex: true, snapToEdge: true, snapRadius: 15 }
 };
 
 const MODE_HANDLERS: Record<string, ModeHandler> = {
@@ -39,6 +41,7 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
   declare state: {
     draftFeature: Feature | null; // The shape currently being drawn or modified
     hoverCoordinate: Position | null; // For rendering the preview guide line
+    snapCoordinate: Position | null;
 
     // Dragging state
     draggedVertex: { featureId: string | number | null; vertexIndex: number } | null;
@@ -51,6 +54,7 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
     this.state = {
       draftFeature: null,
       hoverCoordinate: null,
+      snapCoordinate: null,
       draggedVertex: null,
       draggedFeatureId: null,
       dragStartCoordinate: null,
@@ -76,17 +80,15 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
     const { props, oldProps } = params;
 
     if (props.mode !== oldProps.mode) {
-      // Clean up / finalize the old mode handler if it exists
       const oldHandler = oldProps.mode && oldProps.mode !== 'inactive' ? MODE_HANDLERS[oldProps.mode] : null;
       oldHandler?.handleModeChange?.(oldProps.mode, this.actionContext);
 
-      // Initialize the new mode handler if it exists
       this.activeHandler?.handleModeChange?.(oldProps.mode, this.actionContext);
 
-      // Clean up base state on mode switch
       this.setState({
         draftFeature: null,
         hoverCoordinate: null,
+        snapCoordinate: null,
         draggedVertex: null,
         draggedFeatureId: null,
         dragStartCoordinate: null,
@@ -96,23 +98,28 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
   }
 
   onClick(info: PickingInfo) {
-    return this.activeHandler?.onClick?.(info, this.actionContext) ?? false;
+    const snappedInfo = this._getEventInfoWithSnapping(info);
+    return this.activeHandler?.onClick?.(snappedInfo, this.actionContext) ?? false;
   }
 
   onHover(info: PickingInfo) {
-    return this.activeHandler?.onHover?.(info, this.actionContext) ?? false;
+    const snappedInfo = this._getEventInfoWithSnapping(info);
+    return this.activeHandler?.onHover?.(snappedInfo, this.actionContext) ?? false;
   }
 
   onDragStart(info: PickingInfo, event: unknown) {
-    return this.activeHandler?.onDragStart?.(info, event, this.actionContext) ?? false;
+    const snappedInfo = this._getEventInfoWithSnapping(info);
+    return this.activeHandler?.onDragStart?.(snappedInfo, event, this.actionContext) ?? false;
   }
 
   onDrag(info: PickingInfo, event: unknown) {
-    return this.activeHandler?.onDrag?.(info, event, this.actionContext) ?? false;
+    const snappedInfo = this._getEventInfoWithSnapping(info);
+    return this.activeHandler?.onDrag?.(snappedInfo, event, this.actionContext) ?? false;
   }
 
   onDragEnd(info: PickingInfo, event: unknown) {
-    return this.activeHandler?.onDragEnd?.(info, event, this.actionContext) ?? false;
+    const snappedInfo = this._getEventInfoWithSnapping(info);
+    return this.activeHandler?.onDragEnd?.(snappedInfo, event, this.actionContext) ?? false;
   }
 
   private _renderBaseLayer(): Layer {
@@ -302,6 +309,54 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
     );
   }
 
+  private _getEventInfoWithSnapping(info: PickingInfo): PickingInfo {
+    const { snapOptions, data } = this.props;
+    const { draggedFeatureId } = this.state;
+
+    this.setState({ snapCoordinate: null });
+
+    const mergedOptions = {
+      ...defaultProps.snapOptions,
+      ...snapOptions
+    } as SnapOptions;
+
+    if (!mergedOptions.enabled || !info.coordinate) return info;
+
+    const snappedPos = getSnappedCoordinate(info, data.features, mergedOptions, draggedFeatureId);
+
+    if (snappedPos) {
+      this.setState({ snapCoordinate: snappedPos });
+      return { ...info, coordinate: snappedPos };
+    }
+
+    return info;
+  }
+
+  private _renderSnapIndicator(): Layer | null {
+    const { snapCoordinate } = this.state;
+    const { style = {} } = this.props;
+
+    if (!snapCoordinate) return null;
+
+    const snapStyle = { ...DEFAULT_EDIT_STYLE.snapIndicator, ...style.snapIndicator };
+
+    return new ScatterplotLayer(
+      this.getSubLayerProps({
+        id: 'snap-indicator',
+        data: [{ position: snapCoordinate }],
+        getPosition: (d: any) => d.position,
+        getRadius: snapStyle.radius,
+        radiusUnits: 'pixels',
+        getFillColor: snapStyle.fillColor,
+        getLineColor: snapStyle.lineColor,
+        stroked: true,
+        getLineWidth: snapStyle.lineWidth,
+        lineWidthUnits: 'pixels',
+        pickable: false
+      })
+    );
+  }
+
   renderLayers(): Layer[] {
     const { mode } = this.props;
     if (!mode || mode === 'inactive') {
@@ -313,7 +368,8 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
       this._renderPickingOverlay(),
       this._renderDraftLayer(),
       this._renderGuideLine(),
-      this._renderVertexHandles()
+      this._renderVertexHandles(),
+      this._renderSnapIndicator()
     ].filter(Boolean) as Layer[];
   }
 }

@@ -10,6 +10,13 @@ export interface EditableLayerEvent {
   features: Feature[];
 }
 
+export interface SnapOptions {
+  enabled: boolean;
+  snapToVertex: boolean;
+  snapToEdge: boolean;
+  snapRadius: number; // in pixels
+}
+
 export interface EditableLayerProps extends CompositeLayerProps {
   // Core Data
   data: FeatureCollection;
@@ -25,6 +32,9 @@ export interface EditableLayerProps extends CompositeLayerProps {
 
   // Style Override
   style?: EditableLayerStyle;
+
+  // Snapping Options
+  snapOptions?: Partial<SnapOptions>;
 }
 
 export interface VertexHandle {
