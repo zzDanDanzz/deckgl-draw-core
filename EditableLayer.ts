@@ -1,6 +1,6 @@
-import { CompositeLayer } from '@deck.gl/core';
 import type { CompositeLayerProps, DefaultProps, Layer, PickingInfo, UpdateParameters } from '@deck.gl/core';
-import { ScatterplotLayer, PathLayer, SolidPolygonLayer } from '@deck.gl/layers';
+import { CompositeLayer } from '@deck.gl/core';
+import { LineLayer, PathLayer, ScatterplotLayer, SolidPolygonLayer } from '@deck.gl/layers';
 import type { Feature, LineString, MultiPoint, Position } from 'geojson';
 import { createLineString, createMultiPoint } from './utils/geojson.js';
 
@@ -15,10 +15,7 @@ export interface EditableLayerProps extends CompositeLayerProps {
 
 const defaultProps: DefaultProps<EditableLayerProps> = {
   mode: 'inactive',
-  onDrawComplete: { type: 'function', value: () => { } },
-  data: { type: 'array', value: [] }
 };
-
 
 
 export class EditableLayer extends CompositeLayer<EditableLayerProps> {
@@ -95,7 +92,6 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
         new SolidPolygonLayer<Position[]>(
           this.getSubLayerProps({
             id: 'drawing-background-catcher',
-            // TODO: what about other projections? 
             data: [[[-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]]],
             getPolygon: (p: Position[]) => p,
             getFillColor: [0, 0, 0, 0],
@@ -114,6 +110,7 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
             data: activeVertices,
             getPosition: (d: Position) => d,
             getRadius: 6,
+            radiusUnits: 'pixels',
             getFillColor: [255, 0, 0],
             pickable: false
           })
@@ -121,16 +118,33 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
       );
     }
 
-    // Render the floating line guide
-    if (mode === 'line' && activeVertices.length > 0 && hoverCoordinate) {
-      const guideLineData: Position[][] = [[...activeVertices, hoverCoordinate]];
-
+    // Render committed lines
+    if (mode === 'line' && activeVertices.length > 1) {
       layers.push(
         new PathLayer<Position[]>(
           this.getSubLayerProps({
-            id: 'drawing-guide-line',
-            data: guideLineData,
+            id: 'drawing-committed-lines',
+            data: [activeVertices], // Reference only changes on click
             getPath: (d: Position[]) => d,
+            getColor: [255, 0, 0, 255],
+            getWidth: 3,
+            widthMinPixels: 2
+          })
+        )
+      );
+    }
+
+    // Render floating line guide 
+    if (mode === 'line' && activeVertices.length > 0 && hoverCoordinate) {
+      const lastVertex = activeVertices[activeVertices.length - 1];
+
+      layers.push(
+        new LineLayer<{ sourcePosition: Position, targetPosition: Position }>(
+          this.getSubLayerProps({
+            id: 'drawing-guide-line',
+            data: [{ sourcePosition: lastVertex, targetPosition: hoverCoordinate }],
+            getSourcePosition: (d: { sourcePosition: Position }) => d.sourcePosition,
+            getTargetPosition: (d: { targetPosition: Position }) => d.targetPosition,
             getColor: [255, 0, 0, 180],
             getWidth: 3,
             widthMinPixels: 2
