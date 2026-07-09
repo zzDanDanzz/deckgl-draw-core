@@ -1,5 +1,6 @@
 import type { CompositeLayerProps, PickingInfo } from '@deck.gl/core';
-import type { FeatureCollection, Feature, Position } from 'geojson';
+import type { Feature, FeatureCollection, Position } from 'geojson';
+import type { EditableLayerStyle } from './style.js';
 
 export type EditMode = 'inactive' | 'select_feature' | 'edit_vertices' | 'draw_line' | 'draw_polygon' | 'draw_point';
 export type ActionType = 'create' | 'update' | 'delete';
@@ -21,6 +22,9 @@ export interface EditableLayerProps extends CompositeLayerProps {
   // Callbacks
   onChange?: (updatedData: FeatureCollection, event: EditableLayerEvent) => void;
   onSelect?: (selectedFeatureIds: string[] | number[], selectedVertexIndices: number[]) => void;
+
+  // Style Override
+  style?: EditableLayerStyle;
 }
 
 export interface VertexHandle {

@@ -1,15 +1,16 @@
-import { getLastVertex, getVertexHandles } from './utils/geometryUtils.js';
 import type { DefaultProps, Layer, PickingInfo, UpdateParameters } from '@deck.gl/core';
 import { CompositeLayer } from '@deck.gl/core';
 import { GeoJsonLayer, LineLayer, ScatterplotLayer, SolidPolygonLayer } from '@deck.gl/layers';
-import type { FeatureCollection, Feature, Position } from 'geojson';
-import type { EditMode, EditableLayerProps, VertexHandle, ModeHandler, ActionContext } from './types.js';
+import type { Feature, FeatureCollection, Position } from 'geojson';
+import type { ActionContext, EditableLayerProps, ModeHandler, VertexHandle } from './types.js';
+import { getLastVertex, getVertexHandles } from './utils/geometryUtils.js';
 
-import { DrawPointMode } from './modes/DrawPointMode.js';
 import { DrawLineMode } from './modes/DrawLineMode.js';
+import { DrawPointMode } from './modes/DrawPointMode.js';
 import { DrawPolygonMode } from './modes/DrawPolygonMode.js';
-import { SelectFeatureMode } from './modes/SelectFeatureMode.js';
 import { EditVerticesMode } from './modes/EditVerticesMode.js';
+import { SelectFeatureMode } from './modes/SelectFeatureMode.js';
+import { DEFAULT_EDIT_STYLE } from './style.js';
 
 const BACKGROUND_POLYGON: Position[][] = [[
   [-180, -90], [180, -90], [180, 90], [-180, 90], [-180, -90]
@@ -19,7 +20,8 @@ const defaultProps: DefaultProps<EditableLayerProps> = {
   mode: 'inactive',
   selectedFeatureIds: [],
   selectedVertexIndices: [],
-  data: { type: 'FeatureCollection', features: [] }
+  data: { type: 'FeatureCollection', features: [] },
+  style: {}
 };
 
 const MODE_HANDLERS: Record<string, ModeHandler> = {
@@ -114,8 +116,11 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
   }
 
   private _renderBaseLayer(): Layer {
-    const { mode, data, selectedFeatureIds } = this.props;
+    const { mode, data, selectedFeatureIds, style = {} } = this.props;
     const { draftFeature } = this.state;
+
+    const baseStyle = { ...DEFAULT_EDIT_STYLE.base, ...style.base };
+    const selectedStyle = { ...DEFAULT_EDIT_STYLE.selected, ...style.selected };
 
     const draftId = draftFeature?.id ?? draftFeature?.properties?.id;
     const baseFeatures = draftId !== undefined
@@ -137,22 +142,24 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
         pickable: isPickable,
         getFillColor: (f: Feature) => {
           const id = f.id ?? f.properties?.id;
-          const isSelected = id !== undefined && selectedIds?.includes(id);
-          return isSelected ? [255, 120, 0, 40] : [0, 100, 255, 40];
+          return (id !== undefined && selectedIds?.includes(id))
+            ? selectedStyle.fillColor!
+            : baseStyle.fillColor!;
         },
         getLineColor: (f: Feature) => {
           const id = f.id ?? f.properties?.id;
-          const isSelected = id !== undefined && selectedIds?.includes(id);
-          return isSelected ? [255, 120, 0, 200] : [0, 100, 255, 200];
+          return (id !== undefined && selectedIds?.includes(id))
+            ? selectedStyle.lineColor!
+            : baseStyle.lineColor!;
         },
-        getPointRadius: 6,
-        getPointSize: 6,
-        getLineWidth: 3,
+        getPointRadius: baseStyle.pointRadius,
+        getPointSize: baseStyle.pointRadius,
+        getLineWidth: baseStyle.lineWidth,
         lineWidthUnits: 'pixels',
         pointRadiusUnits: 'pixels',
         updateTriggers: {
-          getFillColor: [selectedFeatureIds],
-          getLineColor: [selectedFeatureIds]
+          getFillColor: [selectedFeatureIds, style.base, style.selected],
+          getLineColor: [selectedFeatureIds, style.base, style.selected]
         }
       })
     );
@@ -177,7 +184,11 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
 
   private _renderDraftLayer(): Layer | null {
     const { draftFeature } = this.state;
+    const { style = {} } = this.props;
+
     if (!draftFeature) return null;
+
+    const draftStyle = { ...DEFAULT_EDIT_STYLE.draft, ...style.draft };
 
     return new GeoJsonLayer(
       this.getSubLayerProps({
@@ -187,10 +198,10 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
           features: [draftFeature]
         },
         pickable: false,
-        getFillColor: [255, 0, 0, 40],
-        getLineColor: [255, 0, 0, 255],
-        getPointRadius: 6,
-        getLineWidth: 3,
+        getFillColor: draftStyle.fillColor,
+        getLineColor: draftStyle.lineColor,
+        getPointRadius: draftStyle.pointRadius,
+        getLineWidth: draftStyle.lineWidth,
         lineWidthUnits: 'pixels',
         pointRadiusUnits: 'pixels'
       })
@@ -198,7 +209,7 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
   }
 
   private _renderGuideLine(): Layer | null {
-    const { mode } = this.props;
+    const { mode, style = {} } = this.props;
     const { draftFeature, hoverCoordinate } = this.state;
 
     if ((mode !== 'draw_line' && mode !== 'draw_polygon') || !draftFeature || !hoverCoordinate) {
@@ -208,14 +219,16 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
     const lastVertex = getLastVertex(draftFeature);
     if (!lastVertex) return null;
 
+    const guideStyle = { ...DEFAULT_EDIT_STYLE.guideLine, ...style.guideLine };
+
     return new LineLayer(
       this.getSubLayerProps({
         id: 'guide-line',
         data: [{ source: lastVertex, target: hoverCoordinate }],
         getSourcePosition: (d: any) => d.source,
         getTargetPosition: (d: any) => d.target,
-        getColor: [255, 0, 0, 180],
-        getWidth: 3,
+        getColor: guideStyle.color,
+        getWidth: guideStyle.width,
         widthMinPixels: 2,
         pickable: false
       })
@@ -223,7 +236,7 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
   }
 
   private _renderVertexHandles(): Layer | null {
-    const { mode, data, selectedFeatureIds, selectedVertexIndices } = this.props;
+    const { mode, data, selectedFeatureIds, selectedVertexIndices, style = {} } = this.props;
     const { draftFeature } = this.state;
 
     const handles: VertexHandle[] = [];
@@ -248,24 +261,39 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
 
     if (handles.length === 0) return null;
 
+    const vertexStyle = { ...DEFAULT_EDIT_STYLE.vertex, ...style.vertex };
+    const selectedVertexStyle = { ...DEFAULT_EDIT_STYLE.selectedVertex, ...style.selectedVertex };
+
     return new ScatterplotLayer<VertexHandle>(
       this.getSubLayerProps({
         id: 'vertex-handles',
         data: handles,
         getPosition: (d: VertexHandle) => d.position,
-        getRadius: 6,
+        getRadius: (d: VertexHandle) => {
+          const isSelected = !d.isDraft && selectedVertexIndices?.includes(d.vertexIndex);
+          return isSelected ? selectedVertexStyle.radius! : vertexStyle.radius!;
+        },
         radiusUnits: 'pixels',
         getFillColor: (d: VertexHandle) => {
           const isSelected = !d.isDraft && selectedVertexIndices?.includes(d.vertexIndex);
-          return isSelected ? [255, 120, 0] : [255, 255, 255];
+          return isSelected ? selectedVertexStyle.fillColor! : vertexStyle.fillColor!;
         },
-        getLineColor: [255, 0, 0],
+        getLineColor: (d: VertexHandle) => {
+          const isSelected = !d.isDraft && selectedVertexIndices?.includes(d.vertexIndex);
+          return isSelected ? selectedVertexStyle.lineColor! : vertexStyle.lineColor!;
+        },
         stroked: true,
-        getLineWidth: 2,
+        getLineWidth: (d: VertexHandle) => {
+          const isSelected = !d.isDraft && selectedVertexIndices?.includes(d.vertexIndex);
+          return isSelected ? selectedVertexStyle.lineWidth! : vertexStyle.lineWidth!;
+        },
         lineWidthUnits: 'pixels',
         pickable: true,
         updateTriggers: {
-          getFillColor: [selectedVertexIndices],
+          getFillColor: [selectedVertexIndices, style.vertex, style.selectedVertex],
+          getLineColor: [selectedVertexIndices, style.vertex, style.selectedVertex],
+          getRadius: [selectedVertexIndices, style.vertex, style.selectedVertex],
+          getLineWidth: [selectedVertexIndices, style.vertex, style.selectedVertex],
           getPosition: [handles]
         }
       })
