@@ -1,4 +1,4 @@
-import type { Position, Feature, LineString, MultiPoint } from "geojson";
+import type { Position, Feature, LineString, MultiPoint, Polygon } from "geojson";
 
 export const createLineString = (coords: Position[]): Feature<LineString> => ({
     type: 'Feature',
@@ -10,4 +10,10 @@ export const createMultiPoint = (coords: Position[]): Feature<MultiPoint> => ({
     type: 'Feature',
     properties: {},
     geometry: { type: 'MultiPoint', coordinates: coords }
+});
+
+export const createPolygon = (coords: Position[][]): Feature<Polygon> => ({
+    type: 'Feature',
+    properties: {},
+    geometry: { type: 'Polygon', coordinates: coords }
 });

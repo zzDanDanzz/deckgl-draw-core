@@ -1,12 +1,12 @@
 import type { CompositeLayerProps, DefaultProps, Layer, PickingInfo, UpdateParameters } from '@deck.gl/core';
 import { CompositeLayer } from '@deck.gl/core';
 import { LineLayer, PathLayer, ScatterplotLayer, SolidPolygonLayer } from '@deck.gl/layers';
-import type { Feature, LineString, MultiPoint, Position } from 'geojson';
-import { createLineString, createMultiPoint } from './utils/geojson.js';
+import type { Feature, LineString, MultiPoint, Polygon, Position } from 'geojson';
+import { createLineString, createMultiPoint, createPolygon } from './utils/geojson.js';
 
-export type EditableLayerMode = 'inactive' | 'point' | 'line';
+export type EditableLayerMode = 'inactive' | 'point' | 'line' | 'polygon';
 
-export type DrawnFeature = Feature<MultiPoint | LineString>;
+export type DrawnFeature = Feature<MultiPoint | LineString | Polygon>;
 
 export interface EditableLayerProps extends CompositeLayerProps {
   mode?: EditableLayerMode;
@@ -47,12 +47,22 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
     const { activeVertices } = this.state;
 
     if (activeVertices.length > 0 && this.props.onDrawComplete) {
-      const feature: DrawnFeature = previousMode === 'line'
-        ? createLineString(activeVertices)
-        : createMultiPoint(activeVertices);
+      let feature: DrawnFeature | null = null;
 
+      if (previousMode === 'polygon' && activeVertices.length >= 3) {
+        const closedRing = [...activeVertices, activeVertices[0]!];
+        feature = createPolygon([closedRing]);
+      }
+      else if (previousMode === 'line' && activeVertices.length >= 2) {
+        feature = createLineString(activeVertices);
+      }
+      else if (previousMode === 'point') {
+        feature = createMultiPoint(activeVertices);
+      }
 
-      this.props.onDrawComplete(feature);
+      if (feature) {
+        this.props.onDrawComplete(feature);
+      }
     }
 
     this.setState({ activeVertices: [], hoverCoordinate: null });
@@ -74,7 +84,7 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
   }
 
   onHover(info: PickingInfo) {
-    if (this.props.mode === 'line') {
+    if (this.props.mode === 'line' || this.props.mode === 'polygon') {
       this.setState({ hoverCoordinate: (info.coordinate as Position) || null });
       return true;
     }
@@ -101,7 +111,46 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
       );
     }
 
-    // Render committed vertices
+    // Render polygon preview
+    if (mode === 'polygon' && activeVertices.length > 0) {
+      const previewVertices = hoverCoordinate
+        ? [...activeVertices, hoverCoordinate]
+        : activeVertices;
+
+      // Draw fill
+      if (previewVertices.length >= 3) {
+        layers.push(
+          new SolidPolygonLayer<Position[]>(
+            this.getSubLayerProps({
+              id: 'polygon-fill',
+              data: [previewVertices],
+              getPolygon: (d: Position[]) => d,
+              getFillColor: [255, 0, 0, 80],
+              pickable: false
+            })
+          )
+        );
+      }
+
+      // Draw outline
+      if (previewVertices.length >= 2) {
+        layers.push(
+          new PathLayer<Position[]>(
+            this.getSubLayerProps({
+              id: 'polygon-outline',
+              data: [[...previewVertices, previewVertices[0]]],
+              getPath: (d: Position[]) => d,
+              getColor: [255, 0, 0, 255],
+              getWidth: 3,
+              widthMinPixels: 2,
+              pickable: false
+            })
+          )
+        );
+      }
+    }
+
+    // Render committed vertices (Points)
     if (activeVertices.length > 0) {
       layers.push(
         new ScatterplotLayer<Position>(
@@ -128,13 +177,14 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
             getPath: (d: Position[]) => d,
             getColor: [255, 0, 0, 255],
             getWidth: 3,
-            widthMinPixels: 2
+            widthMinPixels: 2,
+            pickable: false
           })
         )
       );
     }
 
-    // Render floating line guide 
+    // Render floating line guide
     if (mode === 'line' && activeVertices.length > 0 && hoverCoordinate) {
       const lastVertex = activeVertices[activeVertices.length - 1];
 
@@ -147,7 +197,8 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
             getTargetPosition: (d: { targetPosition: Position }) => d.targetPosition,
             getColor: [255, 0, 0, 180],
             getWidth: 3,
-            widthMinPixels: 2
+            widthMinPixels: 2,
+            pickable: false
           })
         )
       );
