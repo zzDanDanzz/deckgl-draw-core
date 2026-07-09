@@ -1,4 +1,4 @@
-import type { Position, Feature, Point, LineString, Polygon } from 'geojson';
+import type { Position, Feature, Point, LineString, Polygon, Geometry } from 'geojson';
 import type { VertexHandle } from '../types.js';
 
 export const generateId = (prefix: string): string => {
@@ -78,26 +78,26 @@ export const getVertexHandles = (feature: Feature, isDraft: boolean): VertexHand
   return [];
 };
 
-export const translateGeometry = (geom: any, deltaLng: number, deltaLat: number): any => {
+export const translateGeometry = <T extends Geometry>(geom: T, deltaLng: number, deltaLat: number): T => {
   const translatePos = (pos: Position): Position => [pos[0]! + deltaLng, pos[1]! + deltaLat];
 
   if (geom.type === 'Point') {
     return {
       ...geom,
-      coordinates: translatePos(geom.coordinates)
-    };
+      coordinates: translatePos((geom as Point).coordinates)
+    } as unknown as T;
   }
   if (geom.type === 'LineString') {
     return {
       ...geom,
-      coordinates: geom.coordinates.map(translatePos)
-    };
+      coordinates: (geom as LineString).coordinates.map(translatePos)
+    } as unknown as T;
   }
   if (geom.type === 'Polygon') {
     return {
       ...geom,
-      coordinates: geom.coordinates.map((ring: Position[]) => ring.map(translatePos))
-    };
+      coordinates: (geom as Polygon).coordinates.map((ring: Position[]) => ring.map(translatePos))
+    } as unknown as T;
   }
   return geom;
 };

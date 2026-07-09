@@ -1,7 +1,7 @@
 import { createPolygon } from '../utils/geometryUtils.js';
 import type { Feature, Polygon, Position, FeatureCollection } from 'geojson';
 import type { PickingInfo } from '@deck.gl/core';
-import type { ModeHandler, ActionContext } from '../types.js';
+import type { ModeHandler, ActionContext, VertexHandle } from '../types.js';
 import { produce } from 'immer';
 
 export class DrawPolygonMode implements ModeHandler {
@@ -11,7 +11,7 @@ export class DrawPolygonMode implements ModeHandler {
 
     const { draftFeature } = context.state;
     const { data, onChange } = context.props;
-    const isFirstVertexClick = !!(sourceLayer && sourceLayer.id.endsWith('vertex-handles') && object && (object as any).vertexIndex === 0);
+    const isFirstVertexClick = !!(sourceLayer && sourceLayer.id.endsWith('vertex-handles') && object && (object as VertexHandle).vertexIndex === 0);
 
     if (draftFeature) {
       const coords = (draftFeature.geometry as Polygon).coordinates[0];

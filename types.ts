@@ -1,5 +1,5 @@
 import type { CompositeLayerProps, PickingInfo } from '@deck.gl/core';
-import type { Feature, FeatureCollection, Position } from 'geojson';
+import type { Feature, FeatureCollection, Position, Geometry } from 'geojson';
 import type { EditableLayerStyle } from './style.js';
 
 export type EditMode = 'inactive' | 'select_feature' | 'edit_vertices' | 'draw_line' | 'draw_polygon' | 'draw_point';
@@ -42,7 +42,7 @@ export interface ActionContext {
     draggedVertex: { featureId: string | number | null; vertexIndex: number } | null;
     draggedFeatureId: string | number | null;
     dragStartCoordinate: Position | null;
-    originalFeatureGeometry: any;
+    originalFeatureGeometry: Geometry | null;
   }>;
   mutateState: (newState: Partial<ActionContext['state']>) => void;
 }
@@ -51,8 +51,8 @@ export interface ModeHandler {
   handleModeChange?(oldMode: string | undefined, context: ActionContext): void;
   onClick?(info: PickingInfo, context: ActionContext): boolean;
   onHover?(info: PickingInfo, context: ActionContext): boolean;
-  onDragStart?(info: PickingInfo, event: any, context: ActionContext): boolean;
-  onDrag?(info: PickingInfo, event: any, context: ActionContext): boolean;
-  onDragEnd?(info: PickingInfo, event: any, context: ActionContext): boolean;
+  onDragStart?(info: PickingInfo, event: unknown, context: ActionContext): boolean;
+  onDrag?(info: PickingInfo, event: unknown, context: ActionContext): boolean;
+  onDragEnd?(info: PickingInfo, event: unknown, context: ActionContext): boolean;
 }
 

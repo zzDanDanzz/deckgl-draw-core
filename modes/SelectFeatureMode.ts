@@ -24,7 +24,7 @@ export class SelectFeatureMode implements ModeHandler {
     return true;
   }
 
-  onDragStart(info: PickingInfo, event: any, context: ActionContext): boolean {
+  onDragStart(info: PickingInfo, event: unknown, context: ActionContext): boolean {
     const { coordinate, object, sourceLayer } = info;
     if (!coordinate) return false;
 
@@ -49,7 +49,7 @@ export class SelectFeatureMode implements ModeHandler {
     return false;
   }
 
-  onDrag(info: PickingInfo, event: any, context: ActionContext): boolean {
+  onDrag(info: PickingInfo, event: unknown, context: ActionContext): boolean {
     const { draggedFeatureId, dragStartCoordinate, originalFeatureGeometry, draftFeature } = context.state;
     const { coordinate } = info;
 
@@ -66,7 +66,7 @@ export class SelectFeatureMode implements ModeHandler {
     return true;
   }
 
-  onDragEnd(info: PickingInfo, event: any, context: ActionContext): boolean {
+  onDragEnd(info: PickingInfo, event: unknown, context: ActionContext): boolean {
     const { draggedFeatureId, draftFeature } = context.state;
     const { data, onChange } = context.props;
 

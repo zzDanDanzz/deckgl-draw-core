@@ -1,6 +1,6 @@
 import type { Feature, FeatureCollection, Position } from 'geojson';
 import type { PickingInfo } from '@deck.gl/core';
-import type { ModeHandler, ActionContext } from '../types.js';
+import type { ModeHandler, ActionContext, VertexHandle } from '../types.js';
 import { produce } from 'immer';
 
 export class EditVerticesMode implements ModeHandler {
@@ -10,7 +10,7 @@ export class EditVerticesMode implements ModeHandler {
 
     const isVertexClick = !!(sourceLayer && sourceLayer.id.endsWith('vertex-handles') && object);
     if (isVertexClick) {
-      const handle = object as any;
+      const handle = object as VertexHandle;
       if (onSelect && selectedFeatureIds) {
         onSelect(selectedFeatureIds, [handle.vertexIndex]);
       }
@@ -31,14 +31,14 @@ export class EditVerticesMode implements ModeHandler {
     return true;
   }
 
-  onDragStart(info: PickingInfo, event: any, context: ActionContext): boolean {
+  onDragStart(info: PickingInfo, event: unknown, context: ActionContext): boolean {
     const { coordinate, object, sourceLayer } = info;
     if (!coordinate) return false;
 
     const { data } = context.props;
     const isVertexHandle = !!(sourceLayer && sourceLayer.id.endsWith('vertex-handles') && object);
     if (isVertexHandle) {
-      const handle = object as any;
+      const handle = object as VertexHandle;
       const feature = data.features.find(f => {
         const fid = f.id ?? f.properties?.id;
         return fid !== undefined && fid === handle.featureId;
@@ -57,7 +57,7 @@ export class EditVerticesMode implements ModeHandler {
     return false;
   }
 
-  onDrag(info: PickingInfo, event: any, context: ActionContext): boolean {
+  onDrag(info: PickingInfo, event: unknown, context: ActionContext): boolean {
     const { draggedVertex, dragStartCoordinate, originalFeatureGeometry, draftFeature } = context.state;
     const { coordinate } = info;
 
@@ -100,7 +100,7 @@ export class EditVerticesMode implements ModeHandler {
     return true;
   }
 
-  onDragEnd(info: PickingInfo, event: any, context: ActionContext): boolean {
+  onDragEnd(info: PickingInfo, event: unknown, context: ActionContext): boolean {
     const { draggedVertex, draftFeature } = context.state;
     const { data, onChange } = context.props;
 

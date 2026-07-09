@@ -1,7 +1,7 @@
 import type { DefaultProps, Layer, PickingInfo, UpdateParameters } from '@deck.gl/core';
 import { CompositeLayer } from '@deck.gl/core';
 import { GeoJsonLayer, LineLayer, ScatterplotLayer, SolidPolygonLayer } from '@deck.gl/layers';
-import type { Feature, FeatureCollection, Position } from 'geojson';
+import type { Feature, FeatureCollection, Position, Geometry } from 'geojson';
 import type { ActionContext, EditableLayerProps, ModeHandler, VertexHandle } from './types.js';
 import { getLastVertex, getVertexHandles } from './utils/geometryUtils.js';
 
@@ -44,7 +44,7 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
     draggedVertex: { featureId: string | number | null; vertexIndex: number } | null;
     draggedFeatureId: string | number | null;
     dragStartCoordinate: Position | null;
-    originalFeatureGeometry: any;
+    originalFeatureGeometry: Geometry | null;
   };
 
   initializeState() {
@@ -103,15 +103,15 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
     return this.activeHandler?.onHover?.(info, this.actionContext) ?? false;
   }
 
-  onDragStart(info: PickingInfo, event: any) {
+  onDragStart(info: PickingInfo, event: unknown) {
     return this.activeHandler?.onDragStart?.(info, event, this.actionContext) ?? false;
   }
 
-  onDrag(info: PickingInfo, event: any) {
+  onDrag(info: PickingInfo, event: unknown) {
     return this.activeHandler?.onDrag?.(info, event, this.actionContext) ?? false;
   }
 
-  onDragEnd(info: PickingInfo, event: any) {
+  onDragEnd(info: PickingInfo, event: unknown) {
     return this.activeHandler?.onDragEnd?.(info, event, this.actionContext) ?? false;
   }
 
@@ -221,12 +221,14 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
 
     const guideStyle = { ...DEFAULT_EDIT_STYLE.guideLine, ...style.guideLine };
 
+    type GuideLineData = { source: Position; target: Position };
+
     return new LineLayer(
       this.getSubLayerProps({
         id: 'guide-line',
         data: [{ source: lastVertex, target: hoverCoordinate }],
-        getSourcePosition: (d: any) => d.source,
-        getTargetPosition: (d: any) => d.target,
+        getSourcePosition: (d: GuideLineData) => d.source,
+        getTargetPosition: (d: GuideLineData) => d.target,
         getColor: guideStyle.color,
         getWidth: guideStyle.width,
         widthMinPixels: 2,
