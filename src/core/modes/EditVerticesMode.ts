@@ -1,4 +1,4 @@
-import type { Feature, Position } from 'geojson';
+import type { Feature } from 'geojson';
 import type { PickingInfo } from '@deck.gl/core';
 import type { ModeHandler, ActionContext, VertexHandle } from '../types.js';
 import { produce } from 'immer';
@@ -31,7 +31,7 @@ export class EditVerticesMode implements ModeHandler {
     return true;
   }
 
-  onDragStart(info: PickingInfo, event: unknown, context: ActionContext): boolean {
+  onDragStart(info: PickingInfo, _event: unknown, context: ActionContext): boolean {
     const { coordinate, object, sourceLayer } = info;
     if (!coordinate) return false;
 
@@ -48,7 +48,7 @@ export class EditVerticesMode implements ModeHandler {
         context.mutateState({
           draggedVertex: { featureId: handle.featureId, vertexIndex: handle.vertexIndex },
           draggedFeatureId: handle.featureId,
-          dragStartCoordinate: coordinate as Position,
+          dragStartCoordinate: handle.position,
           originalFeatureGeometry: feature.geometry,
           draftFeature: feature
         });
@@ -58,7 +58,7 @@ export class EditVerticesMode implements ModeHandler {
     return false;
   }
 
-  onDrag(info: PickingInfo, event: unknown, context: ActionContext): boolean {
+  onDrag(info: PickingInfo, _event: unknown, context: ActionContext): boolean {
     const { draggedVertex, dragStartCoordinate, originalFeatureGeometry, draftFeature } = context.state;
     const { coordinate } = info;
 
@@ -101,7 +101,7 @@ export class EditVerticesMode implements ModeHandler {
     return true;
   }
 
-  onDragEnd(info: PickingInfo, event: unknown, context: ActionContext): boolean {
+  onDragEnd(_info: PickingInfo, _event: unknown, context: ActionContext): boolean {
     const { draggedVertex, draftFeature } = context.state;
     const { data, onChange } = context.props;
 

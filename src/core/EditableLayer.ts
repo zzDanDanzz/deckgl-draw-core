@@ -310,8 +310,8 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
   }
 
   private _getEventInfoWithSnapping(info: PickingInfo): PickingInfo {
-    const { snapOptions, data } = this.props;
-    const { draggedFeatureId } = this.state;
+    const { snapOptions, data, mode } = this.props;
+    const { draggedFeatureId, draggedVertex } = this.state;
 
     this.setState({ snapCoordinate: null });
 
@@ -321,6 +321,12 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
     } as SnapOptions;
 
     if (!mergedOptions.enabled || !info.coordinate) return info;
+
+    // Prevent snapping if the layer is inactive
+    if (!mode || mode === 'inactive') return info;
+    // Prevent snapping on hover in 'edit_vertices'/'select_feature' mode unless actively dragging a vertex/feature
+    if (mode === 'edit_vertices' && !draggedVertex) return info;
+    if (mode === 'select_feature' && draggedFeatureId === null) return info;
 
     const snappedPos = getSnappedCoordinate(info, data.features, mergedOptions, draggedFeatureId);
 

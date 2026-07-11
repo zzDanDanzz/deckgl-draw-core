@@ -1,5 +1,5 @@
 import { translateGeometry } from '../utils/geometryUtils.js';
-import type { Feature, Position } from 'geojson';
+import type { Feature, Position, Point } from 'geojson';
 import type { PickingInfo } from '@deck.gl/core';
 import type { ModeHandler, ActionContext } from '../types.js';
 import { produce } from 'immer';
@@ -24,7 +24,7 @@ export class SelectFeatureMode implements ModeHandler {
     return true;
   }
 
-  onDragStart(info: PickingInfo, event: unknown, context: ActionContext): boolean {
+  onDragStart(info: PickingInfo, _event: unknown, context: ActionContext): boolean {
     const { coordinate, object, sourceLayer } = info;
     if (!coordinate) return false;
 
@@ -37,9 +37,14 @@ export class SelectFeatureMode implements ModeHandler {
       const isSelected = featureId !== undefined && selectedIds?.includes(featureId);
 
       if (isSelected) {
+        const isPoint = clickedFeature.geometry.type === 'Point';
+        const startCoord = isPoint
+          ? ((clickedFeature.geometry as Point).coordinates as Position)
+          : (coordinate as Position);
+
         context.mutateState({
           draggedFeatureId: featureId,
-          dragStartCoordinate: coordinate as Position,
+          dragStartCoordinate: startCoord,
           originalFeatureGeometry: clickedFeature.geometry,
           draftFeature: clickedFeature
         });
@@ -49,7 +54,7 @@ export class SelectFeatureMode implements ModeHandler {
     return false;
   }
 
-  onDrag(info: PickingInfo, event: unknown, context: ActionContext): boolean {
+  onDrag(info: PickingInfo, _event: unknown, context: ActionContext): boolean {
     const { draggedFeatureId, dragStartCoordinate, originalFeatureGeometry, draftFeature } = context.state;
     const { coordinate } = info;
 
@@ -66,7 +71,7 @@ export class SelectFeatureMode implements ModeHandler {
     return true;
   }
 
-  onDragEnd(info: PickingInfo, event: unknown, context: ActionContext): boolean {
+  onDragEnd(_info: PickingInfo, _event: unknown, context: ActionContext): boolean {
     const { draggedFeatureId, draftFeature } = context.state;
     const { data, onChange } = context.props;
 
