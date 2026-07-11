@@ -6,14 +6,16 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import type { FeatureCollection } from "geojson";
 import type { StyleSpecification } from "maplibre-gl";
 
-import { EditableLayer } from "./core/EditableLayer";
+import { EditableLayer } from "../core/EditableLayer";
 import type {
     EditableLayerEvent,
     EditMode,
     SnapOptions,
     SelectedVertex,
-} from "./core/types";
-import { DrawToolbar } from "./ui/DrawToolbar";
+} from "../core/types";
+import { DrawToolbar } from "../ui/DrawToolbar";
+import { GithubHeader } from "./GithubHeader";
+import { GeoJSONInspector } from "./GeoJSONInspector";
 
 const INITIAL_VIEW_STATE = {
     longitude: -122.41669,
@@ -61,7 +63,6 @@ export default function App() {
         snapToEdge: false,
         snapRadius: 15,
     });
-    const [isInspectorOpen, setIsInspectorOpen] = useState(false);
 
     const handleChange = (
         updatedData: FeatureCollection,
@@ -105,6 +106,7 @@ export default function App() {
                 backgroundColor: "#1a1a1a",
             }}
         >
+            <GithubHeader />
             <DrawToolbar
                 mode={mode}
                 onModeChange={handleModeChange}
@@ -142,62 +144,7 @@ export default function App() {
                 <Map mapStyle={OSM_STYLE as StyleSpecification} />
             </DeckGL>
 
-            {/* Collapsible GeoJSON Inspector */}
-            <div
-                style={{
-                    position: "absolute",
-                    bottom: 20,
-                    left: 20,
-                    width: 350,
-                    maxHeight: "50vh",
-                    backgroundColor: "#fff",
-                    borderRadius: 8,
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                    display: "flex",
-                    flexDirection: "column",
-                    zIndex: 20,
-                    overflow: "hidden",
-                    fontFamily: "monospace",
-                }}
-            >
-                <div
-                    style={{
-                        padding: "12px 16px",
-                        backgroundColor: "#f8f9fa",
-                        borderBottom: isInspectorOpen
-                            ? "1px solid #e9ecef"
-                            : "none",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        cursor: "pointer",
-                        fontWeight: 600,
-                        color: "#333",
-                        fontSize: "14px",
-                    }}
-                    onClick={() => setIsInspectorOpen(!isInspectorOpen)}
-                >
-                    <span>GeoJSON Inspector</span>
-                    <span style={{ fontSize: "10px" }}>
-                        {isInspectorOpen ? "▼" : "▲"}
-                    </span>
-                </div>
-                {isInspectorOpen && (
-                    <div
-                        style={{
-                            padding: "16px",
-                            overflowY: "auto",
-                            fontSize: "12px",
-                            whiteSpace: "pre-wrap",
-                            wordBreak: "break-all",
-                            color: "#212529",
-                            backgroundColor: "#ffffff",
-                        }}
-                    >
-                        {JSON.stringify(data, null, 2)}
-                    </div>
-                )}
-            </div>
+            <GeoJSONInspector data={data} />
         </div>
     );
 }
