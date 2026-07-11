@@ -1,5 +1,5 @@
 import { createLineString } from '../utils/geometryUtils.js';
-import type { Feature, LineString, Position, FeatureCollection } from 'geojson';
+import type { Feature, LineString, Position } from 'geojson';
 import type { PickingInfo } from '@deck.gl/core';
 import type { ModeHandler, ActionContext } from '../types.js';
 import { produce } from 'immer';

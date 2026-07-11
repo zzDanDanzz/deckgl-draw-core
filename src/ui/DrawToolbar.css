@@ -1,0 +1,217 @@
+.deckgl-draw-toolbar {
+  position: absolute;
+  z-index: 10;
+  display: flex;
+  gap: 8px;
+}
+
+/* Orientation */
+.deckgl-draw-toolbar[data-orientation="vertical"] {
+  flex-direction: column;
+}
+.deckgl-draw-toolbar[data-orientation="horizontal"] {
+  flex-direction: row;
+}
+
+/* Group Container */
+.deckgl-draw-toolbar-group {
+  display: flex;
+  background-color: #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+
+.deckgl-draw-toolbar[data-orientation="vertical"] .deckgl-draw-toolbar-group {
+  flex-direction: column;
+}
+.deckgl-draw-toolbar[data-orientation="horizontal"] .deckgl-draw-toolbar-group {
+  flex-direction: row;
+}
+
+/* Positioning */
+.deckgl-draw-toolbar[data-position^="top"] { top: 10px; }
+.deckgl-draw-toolbar[data-position^="bottom"] { bottom: 10px; }
+.deckgl-draw-toolbar[data-position$="left"] { left: 10px; }
+.deckgl-draw-toolbar[data-position$="right"] { right: 10px; }
+
+/* Buttons */
+.deckgl-draw-toolbar-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  outline: none;
+  color: #333;
+  transition: background-color 0.2s ease;
+}
+
+/* Dynamic Borders inside groups based on orientation */
+.deckgl-draw-toolbar[data-orientation="vertical"] .deckgl-draw-toolbar-group .deckgl-draw-toolbar-btn:not(:last-child) {
+  border-bottom: 1px solid #ddd;
+}
+
+.deckgl-draw-toolbar[data-orientation="horizontal"] .deckgl-draw-toolbar-group .deckgl-draw-toolbar-btn:not(:last-child) {
+  border-right: 1px solid #ddd;
+}
+
+/* Active State */
+.deckgl-draw-toolbar-btn[data-active="true"] {
+  background-color: #e6f7ff;
+  color: #1890ff;
+}
+
+.deckgl-draw-toolbar.has-open-menu {
+  overflow: visible;
+}
+
+.deckgl-draw-toolbar.has-open-menu .deckgl-draw-toolbar-snap-container {
+  overflow: visible;
+}
+
+.deckgl-draw-toolbar-snap-container {
+  position: relative;
+  display: flex;
+}
+
+/* Snapping Menu styling */
+.deckgl-draw-snap-menu {
+  position: absolute;
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  padding: 12px;
+  width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 20;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-size: 13px;
+  color: #333333;
+}
+
+/* Header and Switch */
+.deckgl-draw-snap-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 600;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* Master Toggle switch styling */
+.deckgl-draw-snap-switch {
+  position: relative;
+  display: inline-block;
+  width: 32px;
+  height: 18px;
+}
+
+.deckgl-draw-snap-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.deckgl-draw-snap-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .2s;
+  border-radius: 18px;
+}
+
+.deckgl-draw-snap-slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: .2s;
+  border-radius: 50%;
+}
+
+.deckgl-draw-snap-switch input:checked + .deckgl-draw-snap-slider {
+  background-color: #1890ff;
+}
+
+.deckgl-draw-snap-switch input:checked + .deckgl-draw-snap-slider:before {
+  transform: translateX(14px);
+}
+
+/* Form items / checkboxes styling */
+.deckgl-draw-snap-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.2s ease;
+}
+
+.deckgl-draw-snap-option.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.deckgl-draw-snap-option input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: #1890ff;
+  margin: 0;
+}
+
+.deckgl-draw-snap-option.disabled input[type="checkbox"] {
+  cursor: not-allowed;
+}
+
+/* Number input styling */
+.deckgl-draw-snap-radius-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 4px;
+  transition: opacity 0.2s ease;
+}
+
+.deckgl-draw-snap-radius-group.disabled {
+  opacity: 0.5;
+}
+
+.deckgl-draw-snap-radius-label {
+  font-weight: 500;
+  color: #666;
+}
+
+.deckgl-draw-snap-radius-input {
+  width: 50px;
+  padding: 4px 6px;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.deckgl-draw-snap-radius-input:focus {
+  border-color: #1890ff;
+}
+
+.deckgl-draw-snap-radius-input:disabled {
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+}

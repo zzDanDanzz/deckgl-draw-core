@@ -1,5 +1,5 @@
 import { translateGeometry } from '../utils/geometryUtils.js';
-import type { Feature, FeatureCollection, Position } from 'geojson';
+import type { Feature, Position } from 'geojson';
 import type { PickingInfo } from '@deck.gl/core';
 import type { ModeHandler, ActionContext } from '../types.js';
 import { produce } from 'immer';

@@ -1,5 +1,5 @@
 import { createPoint } from '../utils/geometryUtils.js';
-import type { FeatureCollection, Position } from 'geojson';
+import type { Position } from 'geojson';
 import type { PickingInfo } from '@deck.gl/core';
 import type { ModeHandler, ActionContext } from '../types.js';
 import { produce } from 'immer';

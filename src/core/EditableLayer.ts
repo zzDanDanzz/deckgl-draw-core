@@ -344,7 +344,7 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
       this.getSubLayerProps({
         id: 'snap-indicator',
         data: [{ position: snapCoordinate }],
-        getPosition: (d: any) => d.position,
+        getPosition: (d: { position: Position }) => d.position,
         getRadius: snapStyle.radius,
         radiusUnits: 'pixels',
         getFillColor: snapStyle.fillColor,

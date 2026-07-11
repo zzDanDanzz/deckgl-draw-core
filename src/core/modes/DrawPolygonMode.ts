@@ -1,10 +1,37 @@
 import { createPolygon } from '../utils/geometryUtils.js';
-import type { Feature, Polygon, Position, FeatureCollection } from 'geojson';
+import type { Feature, Polygon, Position } from 'geojson';
 import type { PickingInfo } from '@deck.gl/core';
 import type { ModeHandler, ActionContext, VertexHandle } from '../types.js';
 import { produce } from 'immer';
 
 export class DrawPolygonMode implements ModeHandler {
+  handleModeChange(oldMode: string | undefined, context: ActionContext): void {
+    if (oldMode === 'draw_polygon') {
+      const { draftFeature } = context.state;
+      const { onChange, data } = context.props;
+
+      if (draftFeature) {
+        const coords = (draftFeature.geometry as Polygon).coordinates[0];
+        if (coords && coords.length >= 3) {
+          const closedRing = [...coords, coords[0]!];
+          const newPolygon: Feature = {
+            ...draftFeature,
+            geometry: {
+              type: 'Polygon',
+              coordinates: [closedRing]
+            }
+          };
+          const updatedData = produce(data, (draft) => {
+            draft.features.push(newPolygon);
+          });
+          if (onChange) {
+            onChange(updatedData, { type: 'create', features: [newPolygon] });
+          }
+        }
+      }
+    }
+  }
+
   onClick(info: PickingInfo, context: ActionContext): boolean {
     const { coordinate, object, sourceLayer } = info;
     if (!coordinate) return false;
