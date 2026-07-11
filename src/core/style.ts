@@ -28,50 +28,56 @@ export interface EditableLayerStyle {
   snapIndicator?: VertexStyle;
 }
 
+const COLOR_STEEL_BLUE: Color = [25, 130, 196];
+const COLOR_DUSTY_GRAPE: Color = [106, 76, 147];
+const COLOR_WHITE: Color = [255, 255, 255];
+const COLOR_TEAL: Color = [32, 201, 151];
+const COLOR_DARK_CHARCOAL: Color = [51, 51, 51];
+
 export const DEFAULT_EDIT_STYLE = {
   base: {
-    fillColor: [0, 100, 255, 40] as Color,
-    lineColor: [0, 100, 255, 200] as Color,
+    fillColor: [...COLOR_STEEL_BLUE, 40],
+    lineColor: [...COLOR_STEEL_BLUE, 200],
     lineWidth: 3,
     pointRadius: 6,
   },
   selected: {
-    fillColor: [255, 120, 0, 40] as Color,
-    lineColor: [255, 120, 0, 200] as Color,
+    fillColor: [...COLOR_TEAL, 120],
+    lineColor: [...COLOR_TEAL, 200],
     lineWidth: 3,
     pointRadius: 6,
   },
   draft: {
-    fillColor: [255, 0, 0, 40] as Color,
-    lineColor: [255, 0, 0, 255] as Color,
+    fillColor: [...COLOR_TEAL, 120],
+    lineColor: [...COLOR_TEAL, 200],
     lineWidth: 3,
     pointRadius: 6,
   },
   guideLine: {
-    color: [255, 0, 0, 180] as Color,
+    color: [...COLOR_TEAL, 180],
     width: 3,
   },
   vertex: {
-    fillColor: [255, 255, 255] as Color,
-    lineColor: [255, 0, 0] as Color,
+    fillColor: COLOR_WHITE,
+    lineColor: COLOR_DUSTY_GRAPE,
     radius: 6,
     lineWidth: 2,
   },
   selectedVertex: {
-    fillColor: [255, 120, 0] as Color,
-    lineColor: [255, 0, 0] as Color,
+    fillColor: COLOR_WHITE,
+    lineColor: COLOR_DARK_CHARCOAL,
     radius: 6,
     lineWidth: 2,
   },
   midpoint: {
-    fillColor: [255, 255, 255, 200] as Color,
-    lineColor: [150, 150, 150, 255] as Color,
+    fillColor: [...COLOR_WHITE, 200],
+    lineColor: [...COLOR_DUSTY_GRAPE, 180],
     radius: 4.5,
     lineWidth: 1.5,
   },
   snapIndicator: {
-    fillColor: [0, 255, 0, 255] as Color,
-    lineColor: [255, 255, 255, 255] as Color,
+    fillColor: [...COLOR_TEAL, 255],
+    lineColor: [...COLOR_WHITE, 255],
     radius: 7,
     lineWidth: 2,
   }

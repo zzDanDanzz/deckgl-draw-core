@@ -129,6 +129,8 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
     const baseStyle = { ...DEFAULT_EDIT_STYLE.base, ...style.base };
     const selectedStyle = { ...DEFAULT_EDIT_STYLE.selected, ...style.selected };
 
+    const selectedVertexStyle = { ...DEFAULT_EDIT_STYLE.selectedVertex, ...style.selectedVertex };
+
     const draftId = draftFeature?.id ?? draftFeature?.properties?.id;
     const baseFeatures = draftId !== undefined
       ? data.features.filter(f => (f.id ?? f.properties?.id) !== draftId)
@@ -149,15 +151,21 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
         pickable: isPickable,
         getFillColor: (f: Feature) => {
           const id = f.id ?? f.properties?.id;
-          return (id !== undefined && selectedIds?.includes(id))
-            ? selectedStyle.fillColor!
-            : baseStyle.fillColor!;
+          if (id !== undefined && selectedIds?.includes(id)) {
+            return f.geometry?.type === 'Point'
+              ? selectedVertexStyle.fillColor!
+              : selectedStyle.fillColor!;
+          }
+          return baseStyle.fillColor!;
         },
         getLineColor: (f: Feature) => {
           const id = f.id ?? f.properties?.id;
-          return (id !== undefined && selectedIds?.includes(id))
-            ? selectedStyle.lineColor!
-            : baseStyle.lineColor!;
+          if (id !== undefined && selectedIds?.includes(id)) {
+            return f.geometry?.type === 'Point'
+              ? selectedVertexStyle.lineColor!
+              : selectedStyle.lineColor!;
+          }
+          return baseStyle.lineColor!;
         },
         getPointRadius: baseStyle.pointRadius,
         getPointSize: baseStyle.pointRadius,
@@ -165,8 +173,8 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
         lineWidthUnits: 'pixels',
         pointRadiusUnits: 'pixels',
         updateTriggers: {
-          getFillColor: [selectedFeatureIds, style.base, style.selected],
-          getLineColor: [selectedFeatureIds, style.base, style.selected]
+          getFillColor: [selectedFeatureIds, style.base, style.selected, style.selectedVertex],
+          getLineColor: [selectedFeatureIds, style.base, style.selected, style.selectedVertex]
         }
       })
     );
@@ -224,11 +232,15 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
 
   private _renderDraftLayer(): Layer | null {
     const { draftFeature } = this.state;
-    const { style = {} } = this.props;
+    const { style = {}, mode } = this.props;
 
     if (!draftFeature) return null;
 
-    const draftStyle = { ...DEFAULT_EDIT_STYLE.draft, ...style.draft };
+    const isEditing = mode === 'edit_vertices' || mode === 'select_feature';
+
+    const draftStyle = isEditing
+      ? { ...DEFAULT_EDIT_STYLE.selected, ...style.selected }
+      : { ...DEFAULT_EDIT_STYLE.draft, ...style.draft };
 
     return new GeoJsonLayer(
       this.getSubLayerProps({
