@@ -312,6 +312,7 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
 
     const vertexStyle = { ...DEFAULT_EDIT_STYLE.vertex, ...style.vertex };
     const selectedVertexStyle = { ...DEFAULT_EDIT_STYLE.selectedVertex, ...style.selectedVertex };
+    const midpointStyle = { ...DEFAULT_EDIT_STYLE.midpoint, ...style.midpoint };
 
     return new ScatterplotLayer<VertexHandle>(
       this.getSubLayerProps({
@@ -319,30 +320,34 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
         data: handles,
         getPosition: (d: VertexHandle) => d.position,
         getRadius: (d: VertexHandle) => {
+          if (d.type === 'midpoint') return midpointStyle.radius!;
           const isSelected = !d.isDraft && selectedVertexIndices?.includes(d.vertexIndex);
           return isSelected ? selectedVertexStyle.radius! : vertexStyle.radius!;
         },
         radiusUnits: 'pixels',
         getFillColor: (d: VertexHandle) => {
+          if (d.type === 'midpoint') return midpointStyle.fillColor!;
           const isSelected = !d.isDraft && selectedVertexIndices?.includes(d.vertexIndex);
           return isSelected ? selectedVertexStyle.fillColor! : vertexStyle.fillColor!;
         },
         getLineColor: (d: VertexHandle) => {
+          if (d.type === 'midpoint') return midpointStyle.lineColor!;
           const isSelected = !d.isDraft && selectedVertexIndices?.includes(d.vertexIndex);
           return isSelected ? selectedVertexStyle.lineColor! : vertexStyle.lineColor!;
         },
         stroked: true,
         getLineWidth: (d: VertexHandle) => {
+          if (d.type === 'midpoint') return midpointStyle.lineWidth!;
           const isSelected = !d.isDraft && selectedVertexIndices?.includes(d.vertexIndex);
           return isSelected ? selectedVertexStyle.lineWidth! : vertexStyle.lineWidth!;
         },
         lineWidthUnits: 'pixels',
         pickable: true,
         updateTriggers: {
-          getFillColor: [selectedVertexIndices, style.vertex, style.selectedVertex],
-          getLineColor: [selectedVertexIndices, style.vertex, style.selectedVertex],
-          getRadius: [selectedVertexIndices, style.vertex, style.selectedVertex],
-          getLineWidth: [selectedVertexIndices, style.vertex, style.selectedVertex],
+          getFillColor: [selectedVertexIndices, style.vertex, style.selectedVertex, style.midpoint],
+          getLineColor: [selectedVertexIndices, style.vertex, style.selectedVertex, style.midpoint],
+          getRadius: [selectedVertexIndices, style.vertex, style.selectedVertex, style.midpoint],
+          getLineWidth: [selectedVertexIndices, style.vertex, style.selectedVertex, style.midpoint],
           getPosition: [handles]
         }
       })

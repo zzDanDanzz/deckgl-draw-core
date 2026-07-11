@@ -3,14 +3,52 @@ import type { PickingInfo } from '@deck.gl/core';
 import type { ModeHandler, ActionContext, VertexHandle, DeckInteractionEvent } from '../types.js';
 import { produce } from 'immer';
 
+const promoteMidpoint = (feature: Feature, handle: VertexHandle): Feature => {
+  return produce(feature, (draft) => {
+    const geom = draft.geometry;
+    if (geom.type === 'LineString') {
+      geom.coordinates.splice(handle.vertexIndex, 0, handle.position);
+    } else if (geom.type === 'Polygon') {
+      geom.coordinates[0]!.splice(handle.vertexIndex, 0, handle.position);
+    }
+  });
+};
+
 export class EditVerticesMode implements ModeHandler {
   onClick(info: PickingInfo, context: ActionContext): boolean {
     const { object, sourceLayer } = info;
-    const { onSelect, selectedFeatureIds } = context.props;
+    const { onSelect, selectedFeatureIds, data, onChange } = context.props;
 
     const isVertexClick = !!(sourceLayer && sourceLayer.id.endsWith('vertex-handles') && object);
     if (isVertexClick) {
       const handle = object as VertexHandle;
+
+      // If clicking a midpoint directly without dragging, promote it immediately
+      if (handle.type === 'midpoint') {
+        const feature = data.features.find(f => {
+          const fid = f.id ?? f.properties?.id;
+          return fid !== undefined && fid === handle.featureId;
+        });
+        if (feature) {
+          const updatedFeature = promoteMidpoint(feature, handle);
+          const updatedData = produce(data, (draft) => {
+            const idx = draft.features.findIndex(f => {
+              const fid = f.id ?? f.properties?.id;
+              return fid !== undefined && fid === handle.featureId;
+            });
+            if (idx !== -1) draft.features[idx] = updatedFeature;
+          });
+
+          if (onChange) {
+            onChange(updatedData, { type: 'update', features: [updatedFeature] });
+          }
+          if (onSelect && selectedFeatureIds) {
+            onSelect(selectedFeatureIds, [handle.vertexIndex]);
+          }
+          return true;
+        }
+      }
+
       if (onSelect && selectedFeatureIds) {
         onSelect(selectedFeatureIds, [handle.vertexIndex]);
       }
@@ -40,7 +78,7 @@ export class EditVerticesMode implements ModeHandler {
 
     if (isVertexHandle) {
       const handle = object as VertexHandle;
-      const feature = data.features.find(f => {
+      let feature = data.features.find(f => {
         const fid = f.id ?? f.properties?.id;
         return fid !== undefined && fid === handle.featureId;
       });
@@ -49,6 +87,10 @@ export class EditVerticesMode implements ModeHandler {
         // stop panning
         if (event.stopPropagation) event.stopPropagation();
         if (event.preventDefault) event.preventDefault();
+
+        if (handle.type === 'midpoint') {
+          feature = promoteMidpoint(feature, handle);
+        }
 
         context.mutateState({
           draggedVertex: { featureId: handle.featureId, vertexIndex: handle.vertexIndex },

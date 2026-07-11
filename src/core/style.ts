@@ -24,6 +24,7 @@ export interface EditableLayerStyle {
   };
   vertex?: VertexStyle;
   selectedVertex?: VertexStyle;
+  midpoint?: VertexStyle;
   snapIndicator?: VertexStyle;
 }
 
@@ -61,6 +62,12 @@ export const DEFAULT_EDIT_STYLE = {
     lineColor: [255, 0, 0] as Color,
     radius: 6,
     lineWidth: 2,
+  },
+  midpoint: {
+    fillColor: [255, 255, 255, 200] as Color,
+    lineColor: [150, 150, 150, 255] as Color,
+    radius: 4.5,
+    lineWidth: 1.5,
   },
   snapIndicator: {
     fillColor: [0, 255, 0, 255] as Color,

@@ -42,6 +42,7 @@ export interface VertexHandle {
   vertexIndex: number;
   position: Position;
   isDraft: boolean;
+  type?: 'vertex' | 'midpoint';
 }
 
 export interface ActionContext {

@@ -46,36 +46,53 @@ export const getVertexHandles = (feature: Feature, isDraft: boolean): VertexHand
   if (!feature || !feature.geometry) return [];
   const geom = feature.geometry;
   const featureId = feature.id ?? feature.properties?.id ?? null;
+  const handles: VertexHandle[] = [];
 
   if (geom.type === 'Point') {
-    return [{
-      featureId,
-      vertexIndex: 0,
-      position: geom.coordinates,
-      isDraft
-    }];
+    handles.push({ featureId, vertexIndex: 0, position: geom.coordinates, isDraft, type: 'vertex' });
   }
-  if (geom.type === 'LineString') {
-    return geom.coordinates.map((coord, idx) => ({
-      featureId,
-      vertexIndex: idx,
-      position: coord,
-      isDraft
-    }));
+  else if (geom.type === 'LineString') {
+    geom.coordinates.forEach((coord, idx) => {
+      handles.push({ featureId, vertexIndex: idx, position: coord, isDraft, type: 'vertex' });
+    });
+    if (!isDraft) {
+      for (let i = 0; i < geom.coordinates.length - 1; i++) {
+        const p1 = geom.coordinates[i]!;
+        const p2 = geom.coordinates[i + 1]!;
+        handles.push({
+          featureId,
+          vertexIndex: i + 1, // The index where it will be inserted
+          position: [(p1[0]! + p2[0]!) / 2, (p1[1]! + p2[1]!) / 2],
+          isDraft,
+          type: 'midpoint'
+        });
+      }
+    }
   }
-  if (geom.type === 'Polygon') {
+  else if (geom.type === 'Polygon') {
     const ring = geom.coordinates[0];
     if (!ring) return [];
-    // For a committed Polygon, slice(0, -1) to avoid duplicate handles at start/end
+
     const coords = isDraft ? ring : ring.slice(0, -1);
-    return coords.map((coord, idx) => ({
-      featureId,
-      vertexIndex: idx,
-      position: coord,
-      isDraft
-    }));
+    coords.forEach((coord, idx) => {
+      handles.push({ featureId, vertexIndex: idx, position: coord, isDraft, type: 'vertex' });
+    });
+
+    if (!isDraft && coords.length >= 2) {
+      for (let i = 0; i < coords.length; i++) {
+        const p1 = coords[i]!;
+        const p2 = coords[(i + 1) % coords.length]!;
+        handles.push({
+          featureId,
+          vertexIndex: i + 1,
+          position: [(p1[0]! + p2[0]!) / 2, (p1[1]! + p2[1]!) / 2],
+          isDraft,
+          type: 'midpoint'
+        });
+      }
+    }
   }
-  return [];
+  return handles;
 };
 
 export const translateGeometry = <T extends Geometry>(geom: T, deltaLng: number, deltaLat: number): T => {
