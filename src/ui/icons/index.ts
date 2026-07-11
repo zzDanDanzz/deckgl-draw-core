@@ -6,5 +6,7 @@ export * from "./HandIcon";
 export * from "./MagnetIcon";
 export * from "./MagnetOffIcon";
 export * from "./EditVerticesIcon";
+export * from "./TrashIcon";
+
 
 

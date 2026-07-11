@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import type { EditMode, SnapOptions, EditableLayerEvent } from "../core/types";
 import { produce } from "immer";
 import type { Feature, FeatureCollection } from "geojson";
@@ -13,6 +13,7 @@ import {
     MagnetIcon,
     MagnetOffIcon,
     EditVerticesIcon,
+    TrashIcon,
 } from "./icons";
 import stylesString from "./DrawToolbar.css?inline";
 
@@ -89,6 +90,108 @@ export function DrawToolbar({
         };
     }, [isOpen]);
 
+    const deleteSelection = useCallback(() => {
+        if (
+            (mode !== "select_feature" && mode !== "edit_vertices") ||
+            !selectedFeatureIds ||
+            selectedFeatureIds.length === 0 ||
+            !data ||
+            !onChange
+        ) {
+            return;
+        }
+
+        const selectedIds = selectedFeatureIds as (string | number)[];
+
+        if (
+            mode === "edit_vertices" &&
+            selectedVertexIndices &&
+            selectedVertexIndices.length > 0
+        ) {
+            const vertexIndex = selectedVertexIndices[0]!;
+            let featureDeleted = false;
+
+            const updatedData = produce(data, (draft) => {
+                const featureIdx = draft.features.findIndex(
+                    (f) => f.id !== undefined && selectedIds.includes(f.id),
+                );
+
+                if (featureIdx !== -1) {
+                    const feature = draft.features[featureIdx]!;
+                    const geom = feature.geometry;
+
+                    if (geom.type === "LineString") {
+                        geom.coordinates.splice(vertexIndex, 1);
+                        if (geom.coordinates.length < 2) featureDeleted = true;
+                    } else if (geom.type === "Polygon") {
+                        const ring = geom.coordinates[0]!;
+                        ring.pop();
+                        ring.splice(vertexIndex % ring.length, 1);
+                        if (ring.length > 0) {
+                            ring.push([...ring[0]!]);
+                        }
+                        if (ring.length < 4) featureDeleted = true;
+                    } else if (geom.type === "Point") {
+                        featureDeleted = true;
+                    }
+
+                    if (featureDeleted) {
+                        draft.features.splice(featureIdx, 1);
+                    }
+                }
+            });
+
+            if (featureDeleted) {
+                const deletedFeatures = data.features.filter(
+                    (f) => f.id !== undefined && selectedIds.includes(f.id),
+                );
+                onChange(updatedData, {
+                    type: "delete",
+                    features: deletedFeatures,
+                });
+                if (onSelect) onSelect([], []);
+            } else {
+                const updatedFeatures = updatedData.features.filter(
+                    (f) => f.id !== undefined && selectedIds.includes(f.id),
+                );
+                onChange(updatedData, {
+                    type: "update",
+                    features: updatedFeatures,
+                });
+                if (onSelect) onSelect(selectedFeatureIds, []); // Deselect the deleted vertex
+            }
+        } else {
+            const deletedFeatures: Feature[] = [];
+            const updatedData = produce(data, (draft) => {
+                draft.features = draft.features.filter((feature) => {
+                    if (
+                        feature.id !== undefined &&
+                        selectedIds.includes(feature.id)
+                    ) {
+                        deletedFeatures.push(feature as Feature);
+                        return false;
+                    }
+                    return true;
+                });
+            });
+
+            if (deletedFeatures.length > 0) {
+                onChange(updatedData, {
+                    type: "delete",
+                    features: deletedFeatures,
+                });
+            }
+            if (onSelect) onSelect([], []);
+        }
+    }, [
+        mode,
+        data,
+        selectedFeatureIds,
+        selectedVertexIndices,
+        onChange,
+        onSelect,
+    ]);
+
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
             const target = e.target as HTMLElement | null;
@@ -112,115 +215,7 @@ export function DrawToolbar({
                     }, 0);
                 }
             } else if (e.key === "Delete" || e.key === "Backspace") {
-                if (
-                    (mode === "select_feature" || mode === "edit_vertices") &&
-                    selectedFeatureIds &&
-                    selectedFeatureIds.length > 0
-                ) {
-                    if (data && onChange) {
-                        const selectedIds = selectedFeatureIds as (
-                            | string
-                            | number
-                        )[];
-
-                        if (
-                            mode === "edit_vertices" &&
-                            selectedVertexIndices &&
-                            selectedVertexIndices.length > 0
-                        ) {
-                            const vertexIndex = selectedVertexIndices[0]!;
-                            let featureDeleted = false;
-
-                            const updatedData = produce(data, (draft) => {
-                                const featureIdx = draft.features.findIndex(
-                                    (f) =>
-                                        f.id !== undefined &&
-                                        selectedIds.includes(f.id),
-                                );
-
-                                if (featureIdx !== -1) {
-                                    const feature = draft.features[featureIdx]!;
-                                    const geom = feature.geometry;
-
-                                    if (geom.type === "LineString") {
-                                        geom.coordinates.splice(vertexIndex, 1);
-                                        if (geom.coordinates.length < 2)
-                                            featureDeleted = true;
-                                    } else if (geom.type === "Polygon") {
-                                        const ring = geom.coordinates[0]!;
-                                        ring.pop();
-                                        ring.splice(
-                                            vertexIndex % ring.length,
-                                            1,
-                                        );
-                                        if (ring.length > 0) {
-                                            ring.push([...ring[0]!]);
-                                        }
-                                        if (ring.length < 4)
-                                            featureDeleted = true;
-                                    } else if (geom.type === "Point") {
-                                        featureDeleted = true;
-                                    }
-
-                                    if (featureDeleted) {
-                                        draft.features.splice(featureIdx, 1);
-                                    }
-                                }
-                            });
-
-                            if (featureDeleted) {
-                                const deletedFeatures = data.features.filter(
-                                    (f) =>
-                                        f.id !== undefined &&
-                                        selectedIds.includes(f.id),
-                                );
-                                onChange(updatedData, {
-                                    type: "delete",
-                                    features: deletedFeatures,
-                                });
-                                if (onSelect) onSelect([], []);
-                            } else {
-                                const updatedFeatures =
-                                    updatedData.features.filter(
-                                        (f) =>
-                                            f.id !== undefined &&
-                                            selectedIds.includes(f.id),
-                                    );
-                                onChange(updatedData, {
-                                    type: "update",
-                                    features: updatedFeatures,
-                                });
-                                if (onSelect) onSelect(selectedFeatureIds, []); // Deselect the deleted vertex
-                            }
-                        } else {
-                            const deletedFeatures: Feature[] = [];
-                            const updatedData = produce(data, (draft) => {
-                                draft.features = draft.features.filter(
-                                    (feature) => {
-                                        if (
-                                            feature.id !== undefined &&
-                                            selectedIds.includes(feature.id)
-                                        ) {
-                                            deletedFeatures.push(
-                                                feature as Feature,
-                                            );
-                                            return false;
-                                        }
-                                        return true;
-                                    },
-                                );
-                            });
-
-                            if (deletedFeatures.length > 0) {
-                                onChange(updatedData, {
-                                    type: "delete",
-                                    features: deletedFeatures,
-                                });
-                            }
-                            if (onSelect) onSelect([], []);
-                        }
-                    }
-                }
+                deleteSelection();
             }
         };
 
@@ -228,15 +223,7 @@ export function DrawToolbar({
         return () => {
             window.removeEventListener("keydown", handleKeyDown);
         };
-    }, [
-        mode,
-        data,
-        selectedFeatureIds,
-        selectedVertexIndices,
-        onChange,
-        onModeChange,
-        onSelect,
-    ]);
+    }, [mode, onModeChange, deleteSelection]);
 
     const handleToggleEnabled = () => {
         if (onSnapOptionsChange) {
@@ -381,6 +368,42 @@ export function DrawToolbar({
                     onClick={() => onModeChange("edit_vertices")}
                 >
                     <EditVerticesIcon width={20} height={20} />
+                </button>
+                <button
+                    className="deckgl-draw-toolbar-btn"
+                    title="Delete Selection"
+                    onClick={deleteSelection}
+                    disabled={
+                        (mode !== "select_feature" && mode !== "edit_vertices") ||
+                        !selectedFeatureIds ||
+                        selectedFeatureIds.length === 0
+                    }
+                    style={{
+                        opacity:
+                            (mode !== "select_feature" && mode !== "edit_vertices") ||
+                            !selectedFeatureIds ||
+                            selectedFeatureIds.length === 0
+                                ? 0.4
+                                : 1,
+                        cursor:
+                            (mode !== "select_feature" && mode !== "edit_vertices") ||
+                            !selectedFeatureIds ||
+                            selectedFeatureIds.length === 0
+                                ? "not-allowed"
+                                : "pointer",
+                    }}
+                >
+                    <TrashIcon
+                        width={20}
+                        height={20}
+                        stroke={
+                            (mode !== "select_feature" && mode !== "edit_vertices") ||
+                            !selectedFeatureIds ||
+                            selectedFeatureIds.length === 0
+                                ? "#999"
+                                : "#ff4d4f"
+                        }
+                    />
                 </button>
             </div>
 
