@@ -174,7 +174,7 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
 
   private _renderPickingOverlay(): Layer | null {
     const { mode } = this.props;
-    if (mode !== 'draw_point' && mode !== 'draw_line' && mode !== 'draw_polygon') {
+    if (!mode || mode === 'inactive') {
       return null;
     }
 
@@ -370,8 +370,8 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
     }
 
     return [
-      this._renderBaseLayer(),
       this._renderPickingOverlay(),
+      this._renderBaseLayer(),
       this._renderDraftLayer(),
       this._renderGuideLine(),
       this._renderVertexHandles(),

@@ -73,6 +73,12 @@ export default function App() {
         setSelectedVertexIndices(vertexIndices);
     };
 
+    const handleModeChange = (newMode: EditMode) => {
+        setMode(newMode);
+        setSelectedFeatureIds([]);
+        setSelectedVertexIndices([]);
+    };
+
     const editableLayer = new EditableLayer({
         id: "editable-drawing-layer",
         data: data,
@@ -96,7 +102,7 @@ export default function App() {
             {/* The new reusable UI Component */}
             <DrawToolbar
                 mode={mode}
-                onModeChange={setMode}
+                onModeChange={handleModeChange}
                 position="top-right"
                 orientation="vertical"
                 showSnapMenu={true}
