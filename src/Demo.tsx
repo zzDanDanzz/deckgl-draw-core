@@ -99,7 +99,6 @@ export default function App() {
                 backgroundColor: "#1a1a1a",
             }}
         >
-            {/* The new reusable UI Component */}
             <DrawToolbar
                 mode={mode}
                 onModeChange={handleModeChange}
@@ -110,6 +109,7 @@ export default function App() {
                 onSnapOptionsChange={setSnapOptions}
                 data={data}
                 selectedFeatureIds={selectedFeatureIds}
+                selectedVertexIndices={selectedVertexIndices}
                 onChange={handleChange}
                 onSelect={handleSelect}
             />

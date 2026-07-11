@@ -35,8 +35,15 @@ export interface DrawToolbarProps {
     style?: React.CSSProperties;
     data?: FeatureCollection;
     selectedFeatureIds?: string[] | number[];
-    onChange?: (updatedData: FeatureCollection, event: EditableLayerEvent) => void;
-    onSelect?: (selectedFeatureIds: string[] | number[], selectedVertexIndices: number[]) => void;
+    selectedVertexIndices?: number[];
+    onChange?: (
+        updatedData: FeatureCollection,
+        event: EditableLayerEvent,
+    ) => void;
+    onSelect?: (
+        selectedFeatureIds: string[] | number[],
+        selectedVertexIndices: number[],
+    ) => void;
 }
 
 export function DrawToolbar({
@@ -51,6 +58,7 @@ export function DrawToolbar({
     style = {},
     data,
     selectedFeatureIds,
+    selectedVertexIndices,
     onChange,
     onSelect,
 }: DrawToolbarProps) {
@@ -105,36 +113,112 @@ export function DrawToolbar({
                 }
             } else if (e.key === "Delete" || e.key === "Backspace") {
                 if (
-                    mode === "select_feature" &&
+                    (mode === "select_feature" || mode === "edit_vertices") &&
                     selectedFeatureIds &&
                     selectedFeatureIds.length > 0
                 ) {
                     if (data && onChange) {
-                        const deletedFeatures: Feature[] = [];
-                        const selectedIds = selectedFeatureIds as (string | number)[];
-                        const updatedData = produce(data, (draft) => {
-                            draft.features = draft.features.filter((feature) => {
-                                if (
-                                    feature.id !== undefined &&
-                                    feature.id !== null &&
-                                    selectedIds.includes(feature.id)
-                                ) {
-                                    deletedFeatures.push(feature as Feature);
-                                    return false;
-                                }
-                                return true;
-                            });
-                        });
+                        const selectedIds = selectedFeatureIds as (
+                            | string
+                            | number
+                        )[];
 
-                        if (deletedFeatures.length > 0) {
-                            onChange(updatedData, {
-                                type: "delete",
-                                features: deletedFeatures,
+                        if (
+                            mode === "edit_vertices" &&
+                            selectedVertexIndices &&
+                            selectedVertexIndices.length > 0
+                        ) {
+                            const vertexIndex = selectedVertexIndices[0]!;
+                            let featureDeleted = false;
+
+                            const updatedData = produce(data, (draft) => {
+                                const featureIdx = draft.features.findIndex(
+                                    (f) =>
+                                        f.id !== undefined &&
+                                        selectedIds.includes(f.id),
+                                );
+
+                                if (featureIdx !== -1) {
+                                    const feature = draft.features[featureIdx]!;
+                                    const geom = feature.geometry;
+
+                                    if (geom.type === "LineString") {
+                                        geom.coordinates.splice(vertexIndex, 1);
+                                        if (geom.coordinates.length < 2)
+                                            featureDeleted = true;
+                                    } else if (geom.type === "Polygon") {
+                                        const ring = geom.coordinates[0]!;
+                                        ring.pop();
+                                        ring.splice(
+                                            vertexIndex % ring.length,
+                                            1,
+                                        );
+                                        if (ring.length > 0) {
+                                            ring.push([...ring[0]!]);
+                                        }
+                                        if (ring.length < 4)
+                                            featureDeleted = true;
+                                    } else if (geom.type === "Point") {
+                                        featureDeleted = true;
+                                    }
+
+                                    if (featureDeleted) {
+                                        draft.features.splice(featureIdx, 1);
+                                    }
+                                }
                             });
+
+                            if (featureDeleted) {
+                                const deletedFeatures = data.features.filter(
+                                    (f) =>
+                                        f.id !== undefined &&
+                                        selectedIds.includes(f.id),
+                                );
+                                onChange(updatedData, {
+                                    type: "delete",
+                                    features: deletedFeatures,
+                                });
+                                if (onSelect) onSelect([], []);
+                            } else {
+                                const updatedFeatures =
+                                    updatedData.features.filter(
+                                        (f) =>
+                                            f.id !== undefined &&
+                                            selectedIds.includes(f.id),
+                                    );
+                                onChange(updatedData, {
+                                    type: "update",
+                                    features: updatedFeatures,
+                                });
+                                if (onSelect) onSelect(selectedFeatureIds, []); // Deselect the deleted vertex
+                            }
+                        } else {
+                            const deletedFeatures: Feature[] = [];
+                            const updatedData = produce(data, (draft) => {
+                                draft.features = draft.features.filter(
+                                    (feature) => {
+                                        if (
+                                            feature.id !== undefined &&
+                                            selectedIds.includes(feature.id)
+                                        ) {
+                                            deletedFeatures.push(
+                                                feature as Feature,
+                                            );
+                                            return false;
+                                        }
+                                        return true;
+                                    },
+                                );
+                            });
+
+                            if (deletedFeatures.length > 0) {
+                                onChange(updatedData, {
+                                    type: "delete",
+                                    features: deletedFeatures,
+                                });
+                            }
+                            if (onSelect) onSelect([], []);
                         }
-                    }
-                    if (onSelect) {
-                        onSelect([], []);
                     }
                 }
             }
@@ -144,7 +228,15 @@ export function DrawToolbar({
         return () => {
             window.removeEventListener("keydown", handleKeyDown);
         };
-    }, [mode, data, selectedFeatureIds, onChange, onModeChange, onSelect]);
+    }, [
+        mode,
+        data,
+        selectedFeatureIds,
+        selectedVertexIndices,
+        onChange,
+        onModeChange,
+        onSelect,
+    ]);
 
     const handleToggleEnabled = () => {
         if (onSnapOptionsChange) {
