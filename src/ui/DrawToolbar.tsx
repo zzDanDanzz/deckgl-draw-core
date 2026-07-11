@@ -311,7 +311,7 @@ export function DrawToolbar({
                 suppressHydrationWarning
             />
 
-            {/* Group 1: Navigation */}
+            {/* Group 1: Navigation & Modification */}
             <div className="deckgl-draw-toolbar-group">
                 <button
                     className="deckgl-draw-toolbar-btn"
@@ -320,6 +320,22 @@ export function DrawToolbar({
                     onClick={() => onModeChange("inactive")}
                 >
                     <HandIcon width={20} height={20} />
+                </button>
+                <button
+                    className="deckgl-draw-toolbar-btn"
+                    title="Move Feature"
+                    data-active={mode === "select_feature"}
+                    onClick={() => onModeChange("select_feature")}
+                >
+                    <MoveIcon width={20} height={20} />
+                </button>
+                <button
+                    className="deckgl-draw-toolbar-btn"
+                    title="Edit Vertices"
+                    data-active={mode === "edit_vertices"}
+                    onClick={() => onModeChange("edit_vertices")}
+                >
+                    <EditVerticesIcon width={20} height={20} />
                 </button>
             </div>
 
@@ -351,24 +367,8 @@ export function DrawToolbar({
                 </button>
             </div>
 
-            {/* Group 3: Modification */}
+            {/* Group 3: Delete Action */}
             <div className="deckgl-draw-toolbar-group">
-                <button
-                    className="deckgl-draw-toolbar-btn"
-                    title="Move Feature"
-                    data-active={mode === "select_feature"}
-                    onClick={() => onModeChange("select_feature")}
-                >
-                    <MoveIcon width={20} height={20} />
-                </button>
-                <button
-                    className="deckgl-draw-toolbar-btn"
-                    title="Edit Vertices"
-                    data-active={mode === "edit_vertices"}
-                    onClick={() => onModeChange("edit_vertices")}
-                >
-                    <EditVerticesIcon width={20} height={20} />
-                </button>
                 <button
                     className="deckgl-draw-toolbar-btn"
                     title="Delete Selection"
