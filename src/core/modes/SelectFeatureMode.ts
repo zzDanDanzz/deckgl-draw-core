@@ -1,7 +1,7 @@
 import { translateGeometry } from '../utils/geometryUtils.js';
 import type { Feature, Position, Point } from 'geojson';
 import type { PickingInfo } from '@deck.gl/core';
-import type { ModeHandler, ActionContext } from '../types.js';
+import type { ModeHandler, ActionContext, DeckInteractionEvent } from '../types.js';
 import { produce } from 'immer';
 
 export class SelectFeatureMode implements ModeHandler {
@@ -24,12 +24,13 @@ export class SelectFeatureMode implements ModeHandler {
     return true;
   }
 
-  onDragStart(info: PickingInfo, _event: unknown, context: ActionContext): boolean {
+  onDragStart(info: PickingInfo, event: DeckInteractionEvent, context: ActionContext): boolean {
     const { coordinate, object, sourceLayer } = info;
     if (!coordinate) return false;
 
-    const { selectedFeatureIds } = context.props;
+    const { selectedFeatureIds, onSelect } = context.props;
     const isBaseFeature = !!(sourceLayer && sourceLayer.id.endsWith('base-geojson') && object);
+
     if (isBaseFeature) {
       const clickedFeature = object as Feature;
       const featureId = clickedFeature.id ?? clickedFeature.properties?.id;
@@ -42,6 +43,10 @@ export class SelectFeatureMode implements ModeHandler {
           ? ((clickedFeature.geometry as Point).coordinates as Position)
           : (coordinate as Position);
 
+        // stop panning
+        if (event.stopPropagation) event.stopPropagation();
+        if (event.preventDefault) event.preventDefault();
+
         context.mutateState({
           draggedFeatureId: featureId,
           dragStartCoordinate: startCoord,
@@ -51,10 +56,16 @@ export class SelectFeatureMode implements ModeHandler {
         return true;
       }
     }
+
+    // Deselect feature on click outside 
+    if (selectedFeatureIds && selectedFeatureIds.length > 0 && onSelect) {
+      onSelect([], []);
+    }
+
     return false;
   }
 
-  onDrag(info: PickingInfo, _event: unknown, context: ActionContext): boolean {
+  onDrag(info: PickingInfo, _event: DeckInteractionEvent, context: ActionContext): boolean {
     const { draggedFeatureId, dragStartCoordinate, originalFeatureGeometry, draftFeature } = context.state;
     const { coordinate } = info;
 
@@ -71,7 +82,7 @@ export class SelectFeatureMode implements ModeHandler {
     return true;
   }
 
-  onDragEnd(_info: PickingInfo, _event: unknown, context: ActionContext): boolean {
+  onDragEnd(_info: PickingInfo, _event: DeckInteractionEvent, context: ActionContext): boolean {
     const { draggedFeatureId, draftFeature } = context.state;
     const { data, onChange } = context.props;
 

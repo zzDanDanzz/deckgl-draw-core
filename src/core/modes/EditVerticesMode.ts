@@ -1,6 +1,6 @@
 import type { Feature } from 'geojson';
 import type { PickingInfo } from '@deck.gl/core';
-import type { ModeHandler, ActionContext, VertexHandle } from '../types.js';
+import type { ModeHandler, ActionContext, VertexHandle, DeckInteractionEvent } from '../types.js';
 import { produce } from 'immer';
 
 export class EditVerticesMode implements ModeHandler {
@@ -31,12 +31,13 @@ export class EditVerticesMode implements ModeHandler {
     return true;
   }
 
-  onDragStart(info: PickingInfo, _event: unknown, context: ActionContext): boolean {
+  onDragStart(info: PickingInfo, event: DeckInteractionEvent, context: ActionContext): boolean {
     const { coordinate, object, sourceLayer } = info;
     if (!coordinate) return false;
 
-    const { data } = context.props;
+    const { data, onSelect, selectedFeatureIds } = context.props;
     const isVertexHandle = !!(sourceLayer && sourceLayer.id.endsWith('vertex-handles') && object);
+
     if (isVertexHandle) {
       const handle = object as VertexHandle;
       const feature = data.features.find(f => {
@@ -45,6 +46,10 @@ export class EditVerticesMode implements ModeHandler {
       });
 
       if (feature) {
+        // stop panning
+        if (event.stopPropagation) event.stopPropagation();
+        if (event.preventDefault) event.preventDefault();
+
         context.mutateState({
           draggedVertex: { featureId: handle.featureId, vertexIndex: handle.vertexIndex },
           draggedFeatureId: handle.featureId,
@@ -55,10 +60,16 @@ export class EditVerticesMode implements ModeHandler {
         return true;
       }
     }
+
+    // Deselect feature on click outside 
+    if (selectedFeatureIds && selectedFeatureIds.length > 0 && onSelect) {
+      onSelect([], []);
+    }
+
     return false;
   }
 
-  onDrag(info: PickingInfo, _event: unknown, context: ActionContext): boolean {
+  onDrag(info: PickingInfo, _event: DeckInteractionEvent, context: ActionContext): boolean {
     const { draggedVertex, dragStartCoordinate, originalFeatureGeometry, draftFeature } = context.state;
     const { coordinate } = info;
 
@@ -101,7 +112,7 @@ export class EditVerticesMode implements ModeHandler {
     return true;
   }
 
-  onDragEnd(_info: PickingInfo, _event: unknown, context: ActionContext): boolean {
+  onDragEnd(_info: PickingInfo, _event: DeckInteractionEvent, context: ActionContext): boolean {
     const { draggedVertex, draftFeature } = context.state;
     const { data, onChange } = context.props;
 

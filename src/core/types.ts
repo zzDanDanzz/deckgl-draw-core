@@ -57,12 +57,17 @@ export interface ActionContext {
   mutateState: (newState: Partial<ActionContext['state']>) => void;
 }
 
+export interface DeckInteractionEvent {
+  stopPropagation?: () => void;
+  preventDefault?: () => void;
+}
+
 export interface ModeHandler {
   handleModeChange?(oldMode: string | undefined, context: ActionContext): void;
   onClick?(info: PickingInfo, context: ActionContext): boolean;
   onHover?(info: PickingInfo, context: ActionContext): boolean;
-  onDragStart?(info: PickingInfo, event: unknown, context: ActionContext): boolean;
-  onDrag?(info: PickingInfo, event: unknown, context: ActionContext): boolean;
-  onDragEnd?(info: PickingInfo, event: unknown, context: ActionContext): boolean;
+  onDragStart?(info: PickingInfo, event: DeckInteractionEvent, context: ActionContext): boolean;
+  onDrag?(info: PickingInfo, event: DeckInteractionEvent, context: ActionContext): boolean;
+  onDragEnd?(info: PickingInfo, event: DeckInteractionEvent, context: ActionContext): boolean;
 }
 

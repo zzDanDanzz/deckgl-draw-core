@@ -2,7 +2,7 @@ import type { DefaultProps, Layer, PickingInfo, UpdateParameters } from '@deck.g
 import { CompositeLayer } from '@deck.gl/core';
 import { GeoJsonLayer, LineLayer, ScatterplotLayer, SolidPolygonLayer } from '@deck.gl/layers';
 import type { Feature, FeatureCollection, Position, Geometry } from 'geojson';
-import type { ActionContext, EditableLayerProps, ModeHandler, VertexHandle, SnapOptions } from './types.js';
+import type { ActionContext, EditableLayerProps, ModeHandler, VertexHandle, SnapOptions, DeckInteractionEvent } from './types.js';
 import { getLastVertex, getVertexHandles } from './utils/geometryUtils.js';
 import { getSnappedCoordinate } from './utils/snapUtils.js';
 
@@ -107,17 +107,17 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
     return this.activeHandler?.onHover?.(snappedInfo, this.actionContext) ?? false;
   }
 
-  onDragStart(info: PickingInfo, event: unknown) {
+  onDragStart(info: PickingInfo, event: DeckInteractionEvent) {
     const snappedInfo = this._getEventInfoWithSnapping(info);
     return this.activeHandler?.onDragStart?.(snappedInfo, event, this.actionContext) ?? false;
   }
 
-  onDrag(info: PickingInfo, event: unknown) {
+  onDrag(info: PickingInfo, event: DeckInteractionEvent) {
     const snappedInfo = this._getEventInfoWithSnapping(info);
     return this.activeHandler?.onDrag?.(snappedInfo, event, this.actionContext) ?? false;
   }
 
-  onDragEnd(info: PickingInfo, event: unknown) {
+  onDragEnd(info: PickingInfo, event: DeckInteractionEvent) {
     const snappedInfo = this._getEventInfoWithSnapping(info);
     return this.activeHandler?.onDragEnd?.(snappedInfo, event, this.actionContext) ?? false;
   }

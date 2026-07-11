@@ -116,9 +116,7 @@ export default function App() {
 
             <DeckGL
                 initialViewState={INITIAL_VIEW_STATE}
-                controller={
-                    mode !== "select_feature" && mode !== "edit_vertices"
-                }
+                controller={true}
                 layers={[editableLayer]}
                 getCursor={({ isDragging }) =>
                     isDragging
