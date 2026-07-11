@@ -74,6 +74,16 @@ export function DrawToolbar({
         ...(snapOptions || {}),
     };
 
+    const [radiusInput, setRadiusInput] = useState<string>(String(options.snapRadius));
+    const lastSnapRadiusRef = useRef(options.snapRadius);
+
+    useEffect(() => {
+        if (options.snapRadius !== lastSnapRadiusRef.current) {
+            setRadiusInput(String(options.snapRadius));
+            lastSnapRadiusRef.current = options.snapRadius;
+        }
+    }, [options.snapRadius]);
+
     useEffect(() => {
         if (!isOpen) return;
         const handleClickOutside = (event: MouseEvent) => {
@@ -255,12 +265,28 @@ export function DrawToolbar({
     };
 
     const handleRadiusChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const value = parseInt(e.target.value, 10);
-        if (!isNaN(value) && onSnapOptionsChange) {
+        const rawValue = e.target.value;
+        setRadiusInput(rawValue);
+
+        const value = parseFloat(rawValue);
+        if (!isNaN(value) && value > 0 && onSnapOptionsChange) {
             onSnapOptionsChange({
                 ...options,
                 snapRadius: value,
             });
+        }
+    };
+
+    const handleRadiusBlur = () => {
+        const value = parseFloat(radiusInput);
+        if (isNaN(value) || value <= 0) {
+            setRadiusInput(String(options.snapRadius));
+        }
+    };
+
+    const handleRadiusKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Enter") {
+            e.currentTarget.blur();
         }
     };
 
@@ -464,11 +490,13 @@ export function DrawToolbar({
                                 </span>
                                 <input
                                     type="number"
-                                    min="1"
-                                    max="100"
+                                    min="0"
+                                    step="any"
                                     className="deckgl-draw-snap-radius-input"
-                                    value={options.snapRadius}
+                                    value={radiusInput}
                                     onChange={handleRadiusChange}
+                                    onBlur={handleRadiusBlur}
+                                    onKeyDown={handleRadiusKeyDown}
                                     disabled={!options.enabled}
                                 />
                             </div>
