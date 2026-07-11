@@ -28,7 +28,7 @@ export class SelectFeatureMode implements ModeHandler {
     const { coordinate, object, sourceLayer } = info;
     if (!coordinate) return false;
 
-    const { selectedFeatureIds, onSelect } = context.props;
+    const { selectedFeatureIds } = context.props;
     const isBaseFeature = !!(sourceLayer && sourceLayer.id.endsWith('base-geojson') && object);
 
     if (isBaseFeature) {
@@ -56,12 +56,6 @@ export class SelectFeatureMode implements ModeHandler {
         return true;
       }
     }
-
-    // Deselect feature on click outside 
-    if (selectedFeatureIds && selectedFeatureIds.length > 0 && onSelect) {
-      onSelect([], []);
-    }
-
     return false;
   }
 

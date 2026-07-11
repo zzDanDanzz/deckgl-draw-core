@@ -73,7 +73,7 @@ export class EditVerticesMode implements ModeHandler {
     const { coordinate, object, sourceLayer } = info;
     if (!coordinate) return false;
 
-    const { data, onSelect, selectedFeatureIds } = context.props;
+    const { data } = context.props;
     const isVertexHandle = !!(sourceLayer && sourceLayer.id.endsWith('vertex-handles') && object);
 
     if (isVertexHandle) {
@@ -102,12 +102,6 @@ export class EditVerticesMode implements ModeHandler {
         return true;
       }
     }
-
-    // Deselect feature on click outside 
-    if (selectedFeatureIds && selectedFeatureIds.length > 0 && onSelect) {
-      onSelect([], []);
-    }
-
     return false;
   }
 
