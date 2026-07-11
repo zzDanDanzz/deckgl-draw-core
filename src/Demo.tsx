@@ -28,7 +28,7 @@ const OSM_STYLE = {
     sources: {
         osm: {
             type: "raster",
-            tiles: ["https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"],
+            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
             tileSize: 256,
             attribution: "&copy; OpenStreetMap Contributors",
             maxzoom: 19,
