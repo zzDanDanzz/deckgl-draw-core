@@ -172,6 +172,39 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
     );
   }
 
+  private _renderHitLayer(): Layer | null {
+    const { mode, data } = this.props;
+    const { draftFeature } = this.state;
+
+    const isPickable = mode === 'select_feature' || mode === 'edit_vertices';
+    if (!isPickable) return null;
+
+    const draftId = draftFeature?.id ?? draftFeature?.properties?.id;
+    const baseFeatures = draftId !== undefined
+      ? data.features.filter(f => (f.id ?? f.properties?.id) !== draftId)
+      : data.features;
+
+    const baseData: FeatureCollection = {
+      ...data,
+      features: baseFeatures
+    };
+
+    return new GeoJsonLayer(
+      this.getSubLayerProps({
+        id: 'hit-area-base-geojson',
+        data: baseData,
+        pickable: true,
+        getFillColor: [0, 0, 0, 0],
+        getLineColor: [0, 0, 0, 0],
+        getPointRadius: 20,
+        getPointSize: 20,
+        getLineWidth: 25,
+        lineWidthUnits: 'pixels',
+        pointRadiusUnits: 'pixels',
+      })
+    );
+  }
+
   private _renderPickingOverlay(): Layer | null {
     const { mode } = this.props;
     if (!mode || mode === 'inactive') {
@@ -244,8 +277,8 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
     );
   }
 
-  private _renderVertexHandles(): Layer | null {
-    const { mode, data, selectedFeatureIds, selectedVertexIndices, style = {} } = this.props;
+  private _getActiveVertexHandles(): VertexHandle[] {
+    const { mode, data, selectedFeatureIds } = this.props;
     const { draftFeature } = this.state;
 
     const handles: VertexHandle[] = [];
@@ -268,6 +301,13 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
       }
     }
 
+    return handles;
+  }
+
+  private _renderVertexHandles(): Layer | null {
+    const { selectedVertexIndices, style = {} } = this.props;
+
+    const handles = this._getActiveVertexHandles();
     if (handles.length === 0) return null;
 
     const vertexStyle = { ...DEFAULT_EDIT_STYLE.vertex, ...style.vertex };
@@ -303,6 +343,27 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
           getLineColor: [selectedVertexIndices, style.vertex, style.selectedVertex],
           getRadius: [selectedVertexIndices, style.vertex, style.selectedVertex],
           getLineWidth: [selectedVertexIndices, style.vertex, style.selectedVertex],
+          getPosition: [handles]
+        }
+      })
+    );
+  }
+
+  private _renderHitVertexHandles(): Layer | null {
+    const handles = this._getActiveVertexHandles();
+    if (handles.length === 0) return null;
+
+    return new ScatterplotLayer<VertexHandle>(
+      this.getSubLayerProps({
+        id: 'hit-area-vertex-handles',
+        data: handles,
+        getPosition: (d: VertexHandle) => d.position,
+        getRadius: 20,
+        radiusUnits: 'pixels',
+        getFillColor: [0, 0, 0, 0],
+        getLineColor: [0, 0, 0, 0],
+        pickable: true,
+        updateTriggers: {
           getPosition: [handles]
         }
       })
@@ -372,9 +433,11 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
     return [
       this._renderPickingOverlay(),
       this._renderBaseLayer(),
+      this._renderHitLayer(),
       this._renderDraftLayer(),
       this._renderGuideLine(),
       this._renderVertexHandles(),
+      this._renderHitVertexHandles(),
       this._renderSnapIndicator()
     ].filter(Boolean) as Layer[];
   }
