@@ -103,11 +103,13 @@ export function DrawToolbar({
 
         const selectedIds = selectedFeatureIds as (string | number)[];
 
-        if (
-            mode === "edit_vertices" &&
-            selectedVertexIndices &&
-            selectedVertexIndices.length > 0
-        ) {
+        if (mode === "edit_vertices") {
+            if (
+                !selectedVertexIndices ||
+                selectedVertexIndices.length === 0
+            ) {
+                return;
+            }
             const vertexIndex = selectedVertexIndices[0]!;
             let featureDeleted = false;
 
@@ -298,6 +300,13 @@ export function DrawToolbar({
         return menuStyle;
     };
 
+    const isDeleteDisabled =
+        (mode !== "select_feature" && mode !== "edit_vertices") ||
+        !selectedFeatureIds ||
+        selectedFeatureIds.length === 0 ||
+        (mode === "edit_vertices" &&
+            (!selectedVertexIndices || selectedVertexIndices.length === 0));
+
     return (
         <div
             ref={toolbarRef}
@@ -373,36 +382,16 @@ export function DrawToolbar({
                     className="deckgl-draw-toolbar-btn"
                     title="Delete Selection"
                     onClick={deleteSelection}
-                    disabled={
-                        (mode !== "select_feature" && mode !== "edit_vertices") ||
-                        !selectedFeatureIds ||
-                        selectedFeatureIds.length === 0
-                    }
+                    disabled={isDeleteDisabled}
                     style={{
-                        opacity:
-                            (mode !== "select_feature" && mode !== "edit_vertices") ||
-                            !selectedFeatureIds ||
-                            selectedFeatureIds.length === 0
-                                ? 0.4
-                                : 1,
-                        cursor:
-                            (mode !== "select_feature" && mode !== "edit_vertices") ||
-                            !selectedFeatureIds ||
-                            selectedFeatureIds.length === 0
-                                ? "not-allowed"
-                                : "pointer",
+                        opacity: isDeleteDisabled ? 0.4 : 1,
+                        cursor: isDeleteDisabled ? "not-allowed" : "pointer",
                     }}
                 >
                     <TrashIcon
                         width={20}
                         height={20}
-                        stroke={
-                            (mode !== "select_feature" && mode !== "edit_vertices") ||
-                            !selectedFeatureIds ||
-                            selectedFeatureIds.length === 0
-                                ? "#999"
-                                : "#ff4d4f"
-                        }
+                        stroke={isDeleteDisabled ? "#999" : "#ff4d4f"}
                     />
                 </button>
             </div>
