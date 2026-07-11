@@ -7,7 +7,12 @@ import type { FeatureCollection } from "geojson";
 import type { StyleSpecification } from "maplibre-gl";
 
 import { EditableLayer } from "./core/EditableLayer";
-import type { EditableLayerEvent, EditMode, SnapOptions } from "./core/types";
+import type {
+    EditableLayerEvent,
+    EditMode,
+    SnapOptions,
+    SelectedVertex,
+} from "./core/types";
 import { DrawToolbar } from "./ui/DrawToolbar";
 
 const INITIAL_VIEW_STATE = {
@@ -48,7 +53,7 @@ export default function App() {
         string[] | number[]
     >([]);
     const [selectedVertexIndices, setSelectedVertexIndices] = useState<
-        number[]
+        SelectedVertex[]
     >([]);
     const [snapOptions, setSnapOptions] = useState<SnapOptions>({
         enabled: true,
@@ -67,7 +72,7 @@ export default function App() {
 
     const handleSelect = (
         featureIds: string[] | number[],
-        vertexIndices: number[],
+        vertexIndices: SelectedVertex[],
     ) => {
         setSelectedFeatureIds(featureIds);
         setSelectedVertexIndices(vertexIndices);

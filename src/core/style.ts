@@ -64,7 +64,7 @@ export const DEFAULT_EDIT_STYLE = {
     lineWidth: 2,
   },
   selectedVertex: {
-    fillColor: COLOR_WHITE,
+    fillColor: [...COLOR_DARK_CHARCOAL, 120],
     lineColor: COLOR_DARK_CHARCOAL,
     radius: 6,
     lineWidth: 2,

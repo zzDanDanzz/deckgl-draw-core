@@ -44,7 +44,7 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
     snapCoordinate: Position | null;
 
     // Dragging state
-    draggedVertex: { featureId: string | number | null; vertexIndex: number } | null;
+    draggedVertex: { featureId: string | number | null; ringIndex: number; vertexIndex: number } | null;
     draggedFeatureId: string | number | null;
     dragStartCoordinate: Position | null;
     originalFeatureGeometry: Geometry | null;
@@ -326,6 +326,11 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
     const selectedVertexStyle = { ...DEFAULT_EDIT_STYLE.selectedVertex, ...style.selectedVertex };
     const midpointStyle = { ...DEFAULT_EDIT_STYLE.midpoint, ...style.midpoint };
 
+    const getIsSelected = (d: VertexHandle) => {
+      if (d.isDraft || !selectedVertexIndices) return false;
+      return selectedVertexIndices.some(v => v.ringIndex === d.ringIndex && v.vertexIndex === d.vertexIndex);
+    };
+
     return new ScatterplotLayer<VertexHandle>(
       this.getSubLayerProps({
         id: 'vertex-handles',
@@ -333,25 +338,21 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
         getPosition: (d: VertexHandle) => d.position,
         getRadius: (d: VertexHandle) => {
           if (d.type === 'midpoint') return midpointStyle.radius!;
-          const isSelected = !d.isDraft && selectedVertexIndices?.includes(d.vertexIndex);
-          return isSelected ? selectedVertexStyle.radius! : vertexStyle.radius!;
+          return getIsSelected(d) ? selectedVertexStyle.radius! : vertexStyle.radius!;
         },
         radiusUnits: 'pixels',
         getFillColor: (d: VertexHandle) => {
           if (d.type === 'midpoint') return midpointStyle.fillColor!;
-          const isSelected = !d.isDraft && selectedVertexIndices?.includes(d.vertexIndex);
-          return isSelected ? selectedVertexStyle.fillColor! : vertexStyle.fillColor!;
+          return getIsSelected(d) ? selectedVertexStyle.fillColor! : vertexStyle.fillColor!;
         },
         getLineColor: (d: VertexHandle) => {
           if (d.type === 'midpoint') return midpointStyle.lineColor!;
-          const isSelected = !d.isDraft && selectedVertexIndices?.includes(d.vertexIndex);
-          return isSelected ? selectedVertexStyle.lineColor! : vertexStyle.lineColor!;
+          return getIsSelected(d) ? selectedVertexStyle.lineColor! : vertexStyle.lineColor!;
         },
         stroked: true,
         getLineWidth: (d: VertexHandle) => {
           if (d.type === 'midpoint') return midpointStyle.lineWidth!;
-          const isSelected = !d.isDraft && selectedVertexIndices?.includes(d.vertexIndex);
-          return isSelected ? selectedVertexStyle.lineWidth! : vertexStyle.lineWidth!;
+          return getIsSelected(d) ? selectedVertexStyle.lineWidth! : vertexStyle.lineWidth!;
         },
         lineWidthUnits: 'pixels',
         pickable: true,

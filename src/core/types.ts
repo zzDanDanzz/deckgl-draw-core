@@ -17,6 +17,11 @@ export interface SnapOptions {
   snapRadius: number; // in pixels
 }
 
+export interface SelectedVertex {
+  ringIndex: number;
+  vertexIndex: number;
+}
+
 export interface EditableLayerProps extends CompositeLayerProps {
   // Core Data
   data: FeatureCollection;
@@ -24,11 +29,11 @@ export interface EditableLayerProps extends CompositeLayerProps {
 
   // Controlled Selection State
   selectedFeatureIds?: string[] | number[];
-  selectedVertexIndices?: number[];
+  selectedVertexIndices?: SelectedVertex[];
 
   // Callbacks
   onChange?: (updatedData: FeatureCollection, event: EditableLayerEvent) => void;
-  onSelect?: (selectedFeatureIds: string[] | number[], selectedVertexIndices: number[]) => void;
+  onSelect?: (selectedFeatureIds: string[] | number[], selectedVertexIndices: SelectedVertex[]) => void;
 
   // Style Override
   style?: EditableLayerStyle;
@@ -39,6 +44,7 @@ export interface EditableLayerProps extends CompositeLayerProps {
 
 export interface VertexHandle {
   featureId: string | number | null;
+  ringIndex: number;
   vertexIndex: number;
   position: Position;
   isDraft: boolean;
@@ -50,7 +56,7 @@ export interface ActionContext {
   state: Readonly<{
     draftFeature: Feature | null;
     hoverCoordinate: Position | null;
-    draggedVertex: { featureId: string | number | null; vertexIndex: number } | null;
+    draggedVertex: { featureId: string | number | null; ringIndex: number; vertexIndex: number } | null;
     draggedFeatureId: string | number | null;
     dragStartCoordinate: Position | null;
     originalFeatureGeometry: Geometry | null;

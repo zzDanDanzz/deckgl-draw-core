@@ -9,7 +9,7 @@ const promoteMidpoint = (feature: Feature, handle: VertexHandle): Feature => {
     if (geom.type === 'LineString') {
       geom.coordinates.splice(handle.vertexIndex, 0, handle.position);
     } else if (geom.type === 'Polygon') {
-      geom.coordinates[0]!.splice(handle.vertexIndex, 0, handle.position);
+      geom.coordinates[handle.ringIndex]!.splice(handle.vertexIndex, 0, handle.position);
     }
   });
 };
@@ -43,14 +43,14 @@ export class EditVerticesMode implements ModeHandler {
             onChange(updatedData, { type: 'update', features: [updatedFeature] });
           }
           if (onSelect && selectedFeatureIds) {
-            onSelect(selectedFeatureIds, [handle.vertexIndex]);
+            onSelect(selectedFeatureIds, [{ ringIndex: handle.ringIndex, vertexIndex: handle.vertexIndex }]);
           }
           return true;
         }
       }
 
       if (onSelect && selectedFeatureIds) {
-        onSelect(selectedFeatureIds, [handle.vertexIndex]);
+        onSelect(selectedFeatureIds, [{ ringIndex: handle.ringIndex, vertexIndex: handle.vertexIndex }]);
       }
     } else {
       const isFeatureClick = !!(sourceLayer && sourceLayer.id.endsWith('base-geojson') && object);
@@ -93,7 +93,7 @@ export class EditVerticesMode implements ModeHandler {
         }
 
         context.mutateState({
-          draggedVertex: { featureId: handle.featureId, vertexIndex: handle.vertexIndex },
+          draggedVertex: { featureId: handle.featureId, ringIndex: handle.ringIndex, vertexIndex: handle.vertexIndex },
           draggedFeatureId: handle.featureId,
           dragStartCoordinate: handle.position,
           originalFeatureGeometry: feature.geometry,
@@ -128,8 +128,10 @@ export class EditVerticesMode implements ModeHandler {
           origGeom.coordinates[vertexIndex]![1]! + deltaLat
         ];
       } else if (geom.type === 'Polygon' && origGeom.type === 'Polygon') {
-        const ring = geom.coordinates[0];
-        const origRing = origGeom.coordinates[0];
+        const rIdx = draggedVertex.ringIndex;
+        const ring = geom.coordinates[rIdx];
+        const origRing = origGeom.coordinates[rIdx];
+        
         if (ring && origRing && origRing[vertexIndex]) {
           ring[vertexIndex] = [
             origRing[vertexIndex]![0]! + deltaLng,
@@ -138,7 +140,7 @@ export class EditVerticesMode implements ModeHandler {
 
           if (vertexIndex === 0 && ring.length > 0) {
             const len = ring.length;
-            ring[len - 1] = [...ring[0]!];
+            ring[len - 1] = [...ring[0]!]; // Keep ring closed
           }
         }
       }

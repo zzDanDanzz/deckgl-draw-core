@@ -1,7 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import type { EditMode, SnapOptions, EditableLayerEvent } from "../core/types";
+import type {
+    EditMode,
+    SnapOptions,
+    EditableLayerEvent,
+    SelectedVertex,
+} from "../core/types";
 import { produce } from "immer";
 import type { Feature, FeatureCollection } from "geojson";
 import {
@@ -36,14 +41,14 @@ export interface DrawToolbarProps {
     style?: React.CSSProperties;
     data?: FeatureCollection;
     selectedFeatureIds?: string[] | number[];
-    selectedVertexIndices?: number[];
+    selectedVertexIndices?: SelectedVertex[];
     onChange?: (
         updatedData: FeatureCollection,
         event: EditableLayerEvent,
     ) => void;
     onSelect?: (
         selectedFeatureIds: string[] | number[],
-        selectedVertexIndices: number[],
+        selectedVertexIndices: SelectedVertex[],
     ) => void;
 }
 
@@ -74,7 +79,9 @@ export function DrawToolbar({
         ...(snapOptions || {}),
     };
 
-    const [radiusInput, setRadiusInput] = useState<string>(String(options.snapRadius));
+    const [radiusInput, setRadiusInput] = useState<string>(
+        String(options.snapRadius),
+    );
     const lastSnapRadiusRef = useRef(options.snapRadius);
 
     useEffect(() => {
@@ -114,13 +121,10 @@ export function DrawToolbar({
         const selectedIds = selectedFeatureIds as (string | number)[];
 
         if (mode === "edit_vertices") {
-            if (
-                !selectedVertexIndices ||
-                selectedVertexIndices.length === 0
-            ) {
+            if (!selectedVertexIndices || selectedVertexIndices.length === 0) {
                 return;
             }
-            const vertexIndex = selectedVertexIndices[0]!;
+            const selectedVertex = selectedVertexIndices[0]!;
             let featureDeleted = false;
 
             const updatedData = produce(data, (draft) => {
@@ -133,16 +137,29 @@ export function DrawToolbar({
                     const geom = feature.geometry;
 
                     if (geom.type === "LineString") {
-                        geom.coordinates.splice(vertexIndex, 1);
+                        geom.coordinates.splice(selectedVertex.vertexIndex, 1);
                         if (geom.coordinates.length < 2) featureDeleted = true;
                     } else if (geom.type === "Polygon") {
-                        const ring = geom.coordinates[0]!;
+                        const ringIndex = selectedVertex.ringIndex;
+                        const ring = geom.coordinates[ringIndex]!;
+
                         ring.pop();
-                        ring.splice(vertexIndex % ring.length, 1);
+                        ring.splice(
+                            selectedVertex.vertexIndex % ring.length,
+                            1,
+                        );
+
                         if (ring.length > 0) {
                             ring.push([...ring[0]!]);
                         }
-                        if (ring.length < 4) featureDeleted = true;
+
+                        if (ringIndex === 0) {
+                            if (ring.length < 4) featureDeleted = true;
+                        } else {
+                            if (ring.length < 4) {
+                                geom.coordinates.splice(ringIndex, 1);
+                            }
+                        }
                     } else if (geom.type === "Point") {
                         featureDeleted = true;
                     }

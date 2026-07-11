@@ -34,9 +34,12 @@ export const getLastVertex = (feature: Feature): Position | null => {
     return coords.length > 0 ? coords[coords.length - 1]! : null;
   }
   if (geom.type === 'Polygon') {
-    const ring = geom.coordinates[0];
-    if (ring && ring.length > 0) {
-      return ring[ring.length - 1]!;
+    const rings = geom.coordinates;
+    if (rings.length > 0) {
+      const lastRing = rings[rings.length - 1]!;
+      if (lastRing && lastRing.length > 0) {
+        return lastRing[lastRing.length - 1]!;
+      }
     }
   }
   return null;
@@ -49,11 +52,11 @@ export const getVertexHandles = (feature: Feature, isDraft: boolean): VertexHand
   const handles: VertexHandle[] = [];
 
   if (geom.type === 'Point') {
-    handles.push({ featureId, vertexIndex: 0, position: geom.coordinates, isDraft, type: 'vertex' });
+    handles.push({ featureId, ringIndex: 0, vertexIndex: 0, position: geom.coordinates, isDraft, type: 'vertex' });
   }
   else if (geom.type === 'LineString') {
     geom.coordinates.forEach((coord, idx) => {
-      handles.push({ featureId, vertexIndex: idx, position: coord, isDraft, type: 'vertex' });
+      handles.push({ featureId, ringIndex: 0, vertexIndex: idx, position: coord, isDraft, type: 'vertex' });
     });
     if (!isDraft) {
       for (let i = 0; i < geom.coordinates.length - 1; i++) {
@@ -61,7 +64,8 @@ export const getVertexHandles = (feature: Feature, isDraft: boolean): VertexHand
         const p2 = geom.coordinates[i + 1]!;
         handles.push({
           featureId,
-          vertexIndex: i + 1, // The index where it will be inserted
+          ringIndex: 0,
+          vertexIndex: i + 1,
           position: [(p1[0]! + p2[0]!) / 2, (p1[1]! + p2[1]!) / 2],
           isDraft,
           type: 'midpoint'
@@ -70,27 +74,27 @@ export const getVertexHandles = (feature: Feature, isDraft: boolean): VertexHand
     }
   }
   else if (geom.type === 'Polygon') {
-    const ring = geom.coordinates[0];
-    if (!ring) return [];
+    geom.coordinates.forEach((ring, ringIdx) => {
+      const coords = isDraft && ringIdx === geom.coordinates.length - 1 ? ring : ring.slice(0, -1);
+      coords.forEach((coord, idx) => {
+        handles.push({ featureId, ringIndex: ringIdx, vertexIndex: idx, position: coord, isDraft, type: 'vertex' });
+      });
 
-    const coords = isDraft ? ring : ring.slice(0, -1);
-    coords.forEach((coord, idx) => {
-      handles.push({ featureId, vertexIndex: idx, position: coord, isDraft, type: 'vertex' });
-    });
-
-    if (!isDraft && coords.length >= 2) {
-      for (let i = 0; i < coords.length; i++) {
-        const p1 = coords[i]!;
-        const p2 = coords[(i + 1) % coords.length]!;
-        handles.push({
-          featureId,
-          vertexIndex: i + 1,
-          position: [(p1[0]! + p2[0]!) / 2, (p1[1]! + p2[1]!) / 2],
-          isDraft,
-          type: 'midpoint'
-        });
+      if (!isDraft && coords.length >= 2) {
+        for (let i = 0; i < coords.length; i++) {
+          const p1 = coords[i]!;
+          const p2 = coords[(i + 1) % coords.length]!;
+          handles.push({
+            featureId,
+            ringIndex: ringIdx,
+            vertexIndex: i + 1,
+            position: [(p1[0]! + p2[0]!) / 2, (p1[1]! + p2[1]!) / 2],
+            isDraft,
+            type: 'midpoint'
+          });
+        }
       }
-    }
+    });
   }
   return handles;
 };
