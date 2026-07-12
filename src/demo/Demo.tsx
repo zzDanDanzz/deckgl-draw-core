@@ -1,10 +1,11 @@
 import DeckGL from "@deck.gl/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Map from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 import type { FeatureCollection } from "geojson";
 import type { StyleSpecification } from "maplibre-gl";
+import type { MapViewState } from "@deck.gl/core";
 
 import { EditableLayer } from "../core/EditableLayer";
 import type {
@@ -18,9 +19,9 @@ import { GithubHeader } from "./GithubHeader";
 import { GeoJSONInspector } from "./GeoJSONInspector";
 
 const INITIAL_VIEW_STATE = {
-    longitude: -122.41669,
-    latitude: 37.7853,
-    zoom: 13,
+    longitude: 51.389,
+    latitude: 35.6892,
+    zoom: 12,
     pitch: 0,
     bearing: 0,
 };
@@ -63,6 +64,23 @@ export default function App() {
         snapToEdge: false,
         snapRadius: 15,
     });
+
+    const [dpr, setDpr] = useState(
+        typeof window !== "undefined" ? window.devicePixelRatio : 1,
+    );
+
+    const [viewState, setViewState] =
+        useState<MapViewState>(INITIAL_VIEW_STATE);
+
+    // Hack: Tracks devicePixelRatio to force a DeckGL remount on browser zoom, fixing a known WebGL picking coordinate offset bug.
+    useEffect(() => {
+        const handleResize = () => {
+            setDpr(window.devicePixelRatio);
+        };
+
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
 
     const handleChange = (
         updatedData: FeatureCollection,
@@ -123,7 +141,12 @@ export default function App() {
             />
 
             <DeckGL
-                initialViewState={INITIAL_VIEW_STATE}
+                // Hack: Forces a complete remount on browser zoom to clear Deck.gl's stale picking framebuffer and fix cursor offsets.
+                key={`deckgl-dpr-${dpr}`}
+                viewState={viewState}
+                onViewStateChange={({ viewState }) =>
+                    setViewState(viewState as MapViewState)
+                }
                 controller={true}
                 layers={[editableLayer]}
                 getCursor={({ isDragging }) =>
