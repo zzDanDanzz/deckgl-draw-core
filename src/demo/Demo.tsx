@@ -165,9 +165,9 @@ export default function App() {
                 }
                 eventRecognizerOptions={{
                     click: {
+                        // Disables the default delay used for double-click detection.
+                        // Essential so that clicks for drawing/editing register instantly.
                         interval: 0,
-                        threshold: 15,
-                        time: 500,
                     },
                 }}
             >
