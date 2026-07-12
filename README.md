@@ -5,6 +5,8 @@ A lightweight, developer-friendly, plug-and-play drawing library for Deck.gl.
 [![npm version](https://img.shields.io/npm/v/@zzdandanzz/deckgl-draw?style=flat-square&color=3388ff)](https://www.npmjs.com/package/@zzdandanzz/deckgl-draw)
 [![license](https://img.shields.io/github/license/zzdandanzz/deckgl-draw?style=flat-square)](https://github.com/zzdandanzz/deckgl-draw/blob/main/LICENSE)
 
+https://github.com/user-attachments/assets/a1cd2355-b0bc-4673-9a4e-e0ef00d04351
+
 Inspired by the simplicity of `mapbox-gl-draw`, this library provides an opinionated, easy-to-use React component and Deck.gl layer to enable drawing and editing of basic geometries with minimal configuration.
 
 ## ✨ Features
