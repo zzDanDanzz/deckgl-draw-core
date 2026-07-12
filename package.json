@@ -1,6 +1,9 @@
 {
     "name": "@zzdandanzz/deckgl-draw",
     "private": false,
+    "config": {
+        "message": "chore: release v%s"
+    },
     "version": "0.2.0",
     "type": "module",
     "main": "./dist/index.cjs",
