@@ -21,7 +21,9 @@
         "build:lib": "tsc -b && vite build -c vite.config.lib.ts",
         "build": "tsc -b && vite build",
         "lint": "eslint .",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "preversion": "npm run lint && npm run build:lib",
+        "postversion": "git push origin main --tags && npm publish --access public"
     },
     "dependencies": {
         "immer": "^11.1.11"
