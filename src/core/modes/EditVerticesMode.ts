@@ -58,7 +58,11 @@ export class EditVerticesMode implements ModeHandler {
         const clickedFeature = object as Feature;
         const featureId = clickedFeature.id ?? clickedFeature.properties?.id;
         if (featureId !== undefined && onSelect) {
-          onSelect([featureId], []);
+          if (clickedFeature.geometry.type === 'Point') {
+            onSelect([featureId], [{ ringIndex: 0, vertexIndex: 0 }]);
+          } else {
+            onSelect([featureId], []);
+          }
         }
       } else {
         if (onSelect) {
