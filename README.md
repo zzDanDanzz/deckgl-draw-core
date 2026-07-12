@@ -14,6 +14,7 @@ Inspired by the simplicity of `mapbox-gl-draw`, this library provides an opinion
 - **Built-in React UI**: Includes a fully styled, customizable `DrawToolbar` component out of the box.
 - **Snapping**: Support for vertex and edge snapping with a configurable pixel radius.
 - **Feature Manipulation**: Move, edit vertices, add midpoints.
+- **Keyboard Shortcuts**: `Escape` (finishes drawing and switches to pan), `Enter` (finishes drawing and keeps the current tool active), and `Delete` / `Backspace` (removes the selected feature or vertex).
 
 ## 📦 Installation
 
