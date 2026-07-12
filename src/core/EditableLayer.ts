@@ -237,10 +237,25 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
     if (!draftFeature) return null;
 
     const isEditing = mode === 'edit_vertices' || mode === 'select_feature';
+    const isPoint = draftFeature.geometry?.type === 'Point';
 
-    const draftStyle = isEditing
-      ? { ...DEFAULT_EDIT_STYLE.selected, ...style.selected }
-      : { ...DEFAULT_EDIT_STYLE.draft, ...style.draft };
+    let fillColor, lineColor, pointRadius, lineWidth;
+
+    if (isEditing && isPoint) {
+      const vertexStyle = { ...DEFAULT_EDIT_STYLE.selectedVertex, ...style.selectedVertex };
+      fillColor = vertexStyle.fillColor;
+      lineColor = vertexStyle.lineColor;
+      pointRadius = vertexStyle.radius;
+      lineWidth = vertexStyle.lineWidth;
+    } else {
+      const featureStyle = isEditing
+        ? { ...DEFAULT_EDIT_STYLE.selected, ...style.selected }
+        : { ...DEFAULT_EDIT_STYLE.draft, ...style.draft };
+      fillColor = featureStyle.fillColor;
+      lineColor = featureStyle.lineColor;
+      pointRadius = featureStyle.pointRadius;
+      lineWidth = featureStyle.lineWidth;
+    }
 
     return new GeoJsonLayer(
       this.getSubLayerProps({
@@ -250,10 +265,10 @@ export class EditableLayer extends CompositeLayer<EditableLayerProps> {
           features: [draftFeature]
         },
         pickable: false,
-        getFillColor: draftStyle.fillColor,
-        getLineColor: draftStyle.lineColor,
-        getPointRadius: draftStyle.pointRadius,
-        getLineWidth: draftStyle.lineWidth,
+        getFillColor: fillColor,
+        getLineColor: lineColor,
+        getPointRadius: pointRadius,
+        getLineWidth: lineWidth,
         lineWidthUnits: 'pixels',
         pointRadiusUnits: 'pixels'
       })
