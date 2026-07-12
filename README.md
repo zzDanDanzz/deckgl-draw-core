@@ -1,75 +1,95 @@
-# React + TypeScript + Vite
+# @zzdandanzz/deckgl-draw
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A lightweight, developer-friendly, plug-and-play drawing library for Deck.gl.
 
-Currently, two official plugins are available:
+[![npm version](https://img.shields.io/npm/v/@zzdandanzz/deckgl-draw?style=flat-square&color=3388ff)](https://www.npmjs.com/package/@zzdandanzz/deckgl-draw)
+[![license](https://img.shields.io/github/license/zzdandanzz/deckgl-draw?style=flat-square)](https://github.com/zzdandanzz/deckgl-draw/blob/main/LICENSE)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Inspired by the simplicity of `mapbox-gl-draw`, this library provides an opinionated, easy-to-use React component and Deck.gl layer to enable drawing and editing of basic geometries with minimal configuration.
 
-## React Compiler
+## ✨ Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Plug-and-Play Architecture**: Easily integrate drawing capabilities into your Deck.gl map without digging into complex layer states.
+- **Core Geometries**: Create and edit Points, LineStrings, and Polygons.
+- **Built-in React UI**: Includes a fully styled, customizable `DrawToolbar` component out of the box.
+- **Snapping**: Support for vertex and edge snapping with a configurable pixel radius.
+- **Feature Manipulation**: Move, edit vertices, add midpoints.
 
-## Expanding the ESLint configuration
+## 📦 Installation
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install @zzdandanzz/deckgl-draw
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+**Peer Dependencies**
+Ensure you have the required peer dependencies installed in your project:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
+```bash
+npm install @deck.gl/core @deck.gl/layers @deck.gl/react react react-dom
 ```
+
+## 🚀 Quick Start
+
+> **💡 Looking for a complete, working example?**
+> Check out the [Full Interactive Demo in the repository (`src/demo/Demo.tsx`)](./src/demo/Demo.tsx) to see it in action right away.
+
+If you just want to get a feel for how it works, the snippet below provides a high-level overview of the main parts. Most of what you need is handled by the `EditableLayer` and the `DrawToolbar`.
+
+Pass your GeoJSON `FeatureCollection` and manage the edit mode via standard React state. _(Note: State management and basic callbacks are omitted here for brevity to highlight the core wiring)._
+
+```jsx
+import { EditableLayer, DrawToolbar } from "@zzdandanzz/deckgl-draw";
+import type { EditMode, EditableLayerEvent } from "@zzdandanzz/deckgl-draw";
+
+export default function App() {
+    // 1. Manage your state (mode, data, selections) here...
+
+    // 2. Initialize the layer
+    const editableLayer = new EditableLayer({
+        id: "editable-drawing-layer",
+        data,
+        mode,
+        selectedFeatureIds,
+        onChange: handleChange,
+        onSelect: (featureIds) => setSelectedFeatureIds(featureIds),
+    });
+
+    return (
+        <div style={{ position: "relative", width: "100vw", height: "100vh" }}>
+            {/* 3. Add the Toolbar UI */}
+            <DrawToolbar
+                data={data}
+                mode={mode}
+                onChange={handleChange}
+                onModeChange={setMode}
+                onSelect={(featureIds) => setSelectedFeatureIds(featureIds)}
+                selectedFeatureIds={selectedFeatureIds}
+            />
+
+            {/* 4. Render the Map */}
+            <DeckGL
+                initialViewState={{
+                    longitude: -122.4,
+                    latitude: 37.74,
+                    zoom: 11,
+                }}
+                controller={true}
+                layers={[editableLayer]}
+            >
+                <Map mapStyle={OSM_STYLE as StyleSpecification} />
+            </DeckGL>
+        </div>
+    );
+}
+```
+
+## 🗺️ Roadmap
+
+This library has just hatched. Some edge cases have not been handled
+
+While functional for basic use cases, there are several areas planned for future improvement:
+
+- [ ] Add support for Multi-Geometries (`MultiPolygon`, `MultiLineString`).
+- [ ] Handle complex polgyons (polygons containing inner rings)
+- [ ] Implement spatial indexing (e.g., R-trees) to optimize snapping performance on datasets with thousands of vertices.
+- [ ] Refactor UI styling to utilize CSS variables, making custom theming and icon replacement effortless.
