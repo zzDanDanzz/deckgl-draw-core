@@ -96,3 +96,5 @@ While functional for basic use cases, there are several areas planned for future
 - [ ] Handle complex polgyons (polygons containing inner rings)
 - [ ] Implement spatial indexing (e.g., R-trees) to optimize snapping performance on datasets with thousands of vertices.
 - [ ] Refactor UI styling to utilize CSS variables, making custom theming and icon replacement effortless.
+- [ ] Add support for feature rotation and scaling.
+- [ ] Add support for DeckGL's `OrthographicView`.
