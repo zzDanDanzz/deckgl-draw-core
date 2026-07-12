@@ -99,9 +99,16 @@ export default function App() {
     };
 
     const handleModeChange = (newMode: EditMode) => {
+        const isSelectionMode = (m: EditMode) =>
+            m === "select_feature" || m === "edit_vertices";
+
+        // If we are not transitioning between two selection-friendly modes, clear the selection
+        if (!(isSelectionMode(mode) && isSelectionMode(newMode))) {
+            setSelectedFeatureIds([]);
+            setSelectedVertexIndices([]);
+        }
+
         setMode(newMode);
-        setSelectedFeatureIds([]);
-        setSelectedVertexIndices([]);
     };
 
     const editableLayer = new EditableLayer({
